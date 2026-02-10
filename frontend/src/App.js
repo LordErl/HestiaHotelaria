@@ -30,6 +30,10 @@ const PublicRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Routes */}
+      <Route path="/booking" element={<BookingEnginePage />} />
+      <Route path="/guest-portal" element={<GuestPortalPage />} />
+      
       <Route 
         path="/login" 
         element={
@@ -39,6 +43,7 @@ function AppRoutes() {
         } 
       />
       
+      {/* Admin Routes */}
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
