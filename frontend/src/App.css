@@ -1,34 +1,94 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Hestia Hotel Management Platform - Custom Styles */
+
+.App {
+  min-height: 100vh;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Custom scrollbar for main content */
+.App::-webkit-scrollbar {
+  width: 8px;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.App::-webkit-scrollbar-track {
+  background: #0B1120;
 }
 
-.App-link {
-    color: #61dafb;
+.App::-webkit-scrollbar-thumb {
+  background: #151E32;
+  border-radius: 4px;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.App::-webkit-scrollbar-thumb:hover {
+  background: #D4AF37;
+}
+
+/* Gold glow effects */
+.gold-glow {
+  box-shadow: 0 0 40px -10px rgba(212, 175, 55, 0.2);
+}
+
+.gold-glow-hover:hover {
+  box-shadow: 0 0 50px -5px rgba(212, 175, 55, 0.4);
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Glass card effect */
+.glass-card {
+  background: rgba(21, 30, 50, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive sidebar adjustment */
+@media (max-width: 1024px) {
+  main[data-testid="main-content"] {
+    margin-left: 80px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main[data-testid="main-content"] {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+  }
 }
