@@ -288,6 +288,141 @@ class HestiaAPITester:
         
         return success1 and success2
 
+    def test_public_hotels_api(self):
+        """Test public hotels API for booking engine"""
+        # This endpoint should work without authentication
+        old_token = self.token
+        self.token = None  # Remove auth for public endpoint
+        
+        success, response = self.run_test(
+            "Public hotels API",
+            "GET",
+            "public/hotels",
+            200
+        )
+        
+        self.token = old_token  # Restore auth
+        return success
+
+    def test_public_availability_api(self):
+        """Test public availability API for booking engine"""
+        if not self.hotel_id:
+            self.log_test("Public availability API", False, "No hotel_id available")
+            return False
+            
+        # This endpoint should work without authentication
+        old_token = self.token
+        self.token = None  # Remove auth for public endpoint
+        
+        success, response = self.run_test(
+            "Public availability API",
+            "GET",
+            f"public/availability?hotel_id={self.hotel_id}&check_in=2024-12-25&check_out=2024-12-27&adults=2&children=0",
+            200
+        )
+        
+        self.token = old_token  # Restore auth
+        return success
+
+    def test_public_reservation_creation(self):
+        """Test public reservation creation for booking engine"""
+        if not self.hotel_id:
+            self.log_test("Public reservation creation", False, "No hotel_id available")
+            return False
+            
+        # First get available rooms
+        old_token = self.token
+        self.token = None
+        
+        # Get availability
+        success, availability_data = self.run_test(
+            "Get availability for reservation test",
+            "GET",
+            f"public/availability?hotel_id={self.hotel_id}&check_in=2024-12-25&check_out=2024-12-27&adults=2&children=0",
+            200
+        )
+        
+        if not success or not availability_data.get('rooms') or not availability_data.get('room_types'):
+            self.log_test("Public reservation creation", False, "No available rooms for test")
+            self.token = old_token
+            return False
+            
+        # Use first available room and room type
+        room = availability_data['rooms'][0]
+        room_type = availability_data['room_types'][0]
+        
+        # Create reservation
+        success, response = self.run_test(
+            "Public reservation creation",
+            "POST",
+            "public/reservations",
+            200,
+            data={
+                "hotel_id": self.hotel_id,
+                "room_id": room['id'],
+                "room_type_id": room_type['id'],
+                "check_in_date": "2024-12-25",
+                "check_out_date": "2024-12-27",
+                "adults": 2,
+                "children": 0,
+                "total_amount": room_type['base_price'] * 2,  # 2 nights
+                "guest": {
+                    "name": "Test Guest",
+                    "email": "test@guest.com",
+                    "phone": "+55 11 99999-0000",
+                    "document_number": "123.456.789-00",
+                    "special_requests": "Test reservation"
+                },
+                "payment_provider": "stripe"
+            }
+        )
+        
+        self.token = old_token  # Restore auth
+        return success
+
+    def test_guest_portal_login(self):
+        """Test guest portal login functionality"""
+        # This endpoint should work without authentication
+        old_token = self.token
+        self.token = None
+        
+        # Try to login with a test confirmation code (this will likely fail but we test the endpoint)
+        success, response = self.run_test(
+            "Guest portal login (test endpoint)",
+            "POST",
+            "guest-portal/login",
+            404,  # Expect 404 since we're using a fake confirmation code
+            data={
+                "email": "test@guest.com",
+                "confirmation_code": "TEST1234"
+            }
+        )
+        
+        self.token = old_token
+        # Return True if we get expected 404 (endpoint working but no matching reservation)
+        return success
+
+    def test_guest_portal_chat(self):
+        """Test guest portal chat functionality"""
+        # This endpoint should work without authentication
+        old_token = self.token
+        self.token = None
+        
+        success, response = self.run_test(
+            "Guest portal chat with Jarbas",
+            "POST",
+            "guest-portal/chat",
+            200,
+            data={
+                "message": "Olá, preciso de ajuda com room service",
+                "session_id": "test_session_123",
+                "guest_id": "test_guest_id"
+            }
+        )
+        
+        self.token = old_token
+        return success
+
     def run_all_tests(self):
         """Run comprehensive API test suite"""
         print("🏨 Starting Hestia Hotel Management API Tests")
