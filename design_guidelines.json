@@ -1,0 +1,133 @@
+{
+  "identity": {
+    "name": "Hestia",
+    "archetype": "Royal Obsidian",
+    "vibe": "Silent Luxury, Data Precision, Warm Hospitality",
+    "description": "A hotel management system that feels like a 5-star concierge service. Dark, moody, but illuminated by gold data points."
+  },
+  "typography": {
+    "headings": {
+      "family": "Playfair Display, serif",
+      "weights": ["400", "600", "700"],
+      "usage": "Page titles, Hero sections, Major KPI values",
+      "import_url": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Manrope:wght@200..800&display=swap"
+    },
+    "body": {
+      "family": "Manrope, sans-serif",
+      "weights": ["300", "400", "500", "600"],
+      "usage": "UI text, Tables, Buttons, Inputs"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "name": "Royal Obsidian",
+        "hex": "#0B1120",
+        "description": "Deepest navy, almost black. The foundation."
+      },
+      "surface": {
+        "name": "Midnight Velvet",
+        "hex": "#151E32",
+        "description": "Slightly lighter navy for cards and sidebars."
+      },
+      "primary": {
+        "name": "Hestia Gold",
+        "hex": "#D4AF37",
+        "description": "The crown jewel. Used for CTAs, active states, and key metrics."
+      },
+      "secondary": {
+        "name": "Linen Beige",
+        "hex": "#E8DCC4",
+        "description": "Soft warmth for secondary text and subtle backgrounds."
+      },
+      "text": {
+        "primary": "#F8FAFC",
+        "secondary": "#94A3B8",
+        "muted": "#475569"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444"
+      }
+    },
+    "tailwind_config_extension": {
+      "colors": {
+        "obsidian": "#0B1120",
+        "velvet": "#151E32",
+        "gold": {
+          "DEFAULT": "#D4AF37",
+          "dim": "#C5A028",
+          "light": "#FCD34D"
+        },
+        "linen": "#E8DCC4"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "style": "Crystal Dark",
+      "classes": "bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl"
+    },
+    "borders": {
+      "style": "Gold Trace",
+      "classes": "border border-gold/20"
+    },
+    "shadows": {
+      "style": "Ambient Glow",
+      "classes": "shadow-[0_0_40px_-10px_rgba(212,175,55,0.1)]"
+    }
+  },
+  "layout_strategy": {
+    "dashboard": {
+      "type": "Bento Grid High Density",
+      "grid_cols": "grid-cols-1 md:grid-cols-4 lg:grid-cols-12",
+      "gap": "gap-6",
+      "padding": "p-6 md:p-8"
+    },
+    "marketing": {
+      "type": "Asymmetric Tetris",
+      "gap": "gap-12 md:gap-24"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-gold text-obsidian hover:bg-gold/90 font-semibold rounded-sm px-8 py-3 transition-all duration-300 uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)]",
+      "secondary": "bg-transparent border border-gold/30 text-gold hover:bg-gold/10 rounded-sm px-8 py-3 uppercase tracking-widest text-xs"
+    },
+    "cards": {
+      "default": "bg-velvet/50 border border-white/5 rounded-lg p-6 hover:border-gold/20 transition-colors duration-500"
+    },
+    "inputs": {
+      "style": "bg-obsidian/50 border-white/10 focus:border-gold/50 text-linen placeholder:text-slate-600 rounded-sm h-12"
+    }
+  },
+  "image_urls": {
+    "rooms": [
+      "https://images.unsplash.com/photo-1509647924673-bbb53e22eeb8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBob3RlbCUyMHJvb20lMjBpbnRlcmlvciUyMGx1eHVyeXxlbnwwfHx8fDE3NzA3NDYyODZ8MA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1759264244746-140bbbc54e1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBob3RlbCUyMHJvb20lMjBpbnRlcmlvciUyMGx1eHVyeXxlbnwwfHx8fDE3NzA3NDYyODZ8MA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1759264244741-7175af0b7e75?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBob3RlbCUyMHJvb20lMjBpbnRlcmlvciUyMGx1eHVyeXxlbnwwfHx8fDE3NzA3NDYyODZ8MA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1759264244764-2cb80f1a67bd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBob3RlbCUyMHJvb20lMjBpbnRlcmlvciUyMGx1eHVyeXxlbnwwfHx8fDE3NzA3NDYyODZ8MA&ixlib=rb-4.1.0&q=85"
+    ],
+    "avatars": [
+      "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200",
+      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'lucide-react' and 'recharts' immediately.",
+    "2. THEME: Override the 'dark' class in index.css with the Royal Obsidian palette. Do not use pure black.",
+    "3. FONTS: Import Playfair Display and Manrope in index.css.",
+    "4. LAYOUT: Use the Bento Grid strategy for the Dashboard. Do not create a generic sidebar layout; make the sidebar floating or glassmorphic.",
+    "5. GOLD RULE: Use Gold (#D4AF37) sparingly. Only for high-value actions or data. Too much gold looks cheap.",
+    "6. DATA: Use Recharts with custom tooltips (dark bg, gold border).",
+    "7. SHADCN: Customize all Shadcn components to remove 'radius-md' and use 'rounded-sm' or 'rounded-none' for a sharper, more premium feel."
+  ],
+  "universal_guidelines": [
+    "Avoid 'AI Slop': No generic gradients, no centered text blocks without purpose.",
+    "Micro-Interactions: Every button must have a hover state (transform, shadow, or color shift).",
+    "Data-TestID: All interactive elements must have data-testid attributes.",
+    "Spacing: Double the whitespace you think you need.",
+    "Dark Mode Only: The app is designed primarily for Dark Mode. Ensure all text has sufficient contrast against the navy background."
+  ]
+}
