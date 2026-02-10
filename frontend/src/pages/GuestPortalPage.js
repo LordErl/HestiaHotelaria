@@ -192,7 +192,7 @@ const GuestPortalPage = () => {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !loginData.email || !loginData.confirmation_code}
                   className="w-full bg-[#D4AF37] hover:bg-[#C5A028] text-[#0B1120] font-semibold py-6"
                   data-testid="guest-login-btn"
                 >
