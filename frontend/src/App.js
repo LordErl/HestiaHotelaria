@@ -11,6 +11,8 @@ import GuestsPage from './pages/GuestsPage';
 import CheckInOutPage from './pages/CheckInOutPage';
 import HousekeepingPage from './pages/HousekeepingPage';
 import ChatPage from './pages/ChatPage';
+import BookingEnginePage from './pages/BookingEnginePage';
+import GuestPortalPage from './pages/GuestPortalPage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
