@@ -909,11 +909,284 @@ async def seed_demo_data():
     
     return {"message": "Dados de demonstração criados com sucesso", "hotel_id": hotel.id}
 
+# ================== PUBLIC ROUTES (BOOKING ENGINE) ==================
+
+class PublicGuestCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    document_number: str
+    special_requests: Optional[str] = None
+
+class PublicReservationCreate(BaseModel):
+    hotel_id: str
+    room_id: str
+    room_type_id: str
+    check_in_date: str
+    check_out_date: str
+    adults: int = 1
+    children: int = 0
+    total_amount: float
+    guest: PublicGuestCreate
+    payment_provider: str = "stripe"
+
+class GuestPortalLogin(BaseModel):
+    email: EmailStr
+    confirmation_code: str
+
+class GuestChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+    guest_id: Optional[str] = None
+
+@api_router.get("/public/hotels")
+async def get_public_hotels():
+    """Get all active hotels for public booking"""
+    hotels = await db.hotels.find({"is_active": True}, {"_id": 0}).to_list(100)
+    for h in hotels:
+        if isinstance(h.get('created_at'), str):
+            h['created_at'] = datetime.fromisoformat(h['created_at'])
+    return hotels
+
+@api_router.get("/public/availability")
+async def check_availability(
+    hotel_id: str,
+    check_in: str,
+    check_out: str,
+    adults: int = 2,
+    children: int = 0
+):
+    """Check room availability for dates"""
+    # Get all rooms for hotel
+    all_rooms = await db.rooms.find({"hotel_id": hotel_id}, {"_id": 0}).to_list(500)
+    
+    # Get reservations that overlap with requested dates
+    overlapping = await db.reservations.find({
+        "hotel_id": hotel_id,
+        "status": {"$in": ["pending", "confirmed", "checked_in"]},
+        "$or": [
+            {"check_in_date": {"$lt": check_out}, "check_out_date": {"$gt": check_in}}
+        ]
+    }, {"_id": 0}).to_list(1000)
+    
+    booked_room_ids = {r['room_id'] for r in overlapping}
+    
+    # Filter available rooms
+    available_rooms = [r for r in all_rooms if r['id'] not in booked_room_ids and r['status'] == 'available']
+    
+    # Get room types
+    room_types = await db.room_types.find({"hotel_id": hotel_id}, {"_id": 0}).to_list(100)
+    
+    # Filter room types that can accommodate guests
+    total_guests = adults + children
+    valid_room_types = [rt for rt in room_types if rt.get('max_occupancy', 2) >= total_guests]
+    
+    # Convert dates
+    for rt in valid_room_types:
+        if isinstance(rt.get('created_at'), str):
+            rt['created_at'] = datetime.fromisoformat(rt['created_at'])
+    
+    for r in available_rooms:
+        if isinstance(r.get('created_at'), str):
+            r['created_at'] = datetime.fromisoformat(r['created_at'])
+    
+    return {
+        "rooms": available_rooms,
+        "room_types": valid_room_types,
+        "check_in": check_in,
+        "check_out": check_out
+    }
+
+@api_router.post("/public/reservations")
+async def create_public_reservation(data: PublicReservationCreate):
+    """Create a reservation from the public booking engine"""
+    # Create or find guest
+    existing_guest = await db.guests.find_one({
+        "email": data.guest.email,
+        "hotel_id": data.hotel_id
+    })
+    
+    if existing_guest:
+        guest_id = existing_guest['id']
+    else:
+        guest = Guest(
+            name=data.guest.name,
+            email=data.guest.email,
+            phone=data.guest.phone,
+            document_number=data.guest.document_number,
+            hotel_id=data.hotel_id,
+            notes=data.guest.special_requests
+        )
+        guest_dict = guest.model_dump()
+        guest_dict['created_at'] = guest_dict['created_at'].isoformat()
+        await db.guests.insert_one(guest_dict)
+        guest_id = guest.id
+    
+    # Generate confirmation code
+    confirmation_code = str(uuid.uuid4())[:8].upper()
+    
+    # Create reservation
+    reservation = Reservation(
+        hotel_id=data.hotel_id,
+        guest_id=guest_id,
+        room_id=data.room_id,
+        room_type_id=data.room_type_id,
+        check_in_date=data.check_in_date,
+        check_out_date=data.check_out_date,
+        adults=data.adults,
+        children=data.children,
+        status=ReservationStatus.CONFIRMED,
+        total_amount=data.total_amount,
+        payment_status=PaymentStatus.PENDING,
+        source="booking_engine",
+        notes=data.guest.special_requests
+    )
+    
+    res_dict = reservation.model_dump()
+    res_dict['created_at'] = res_dict['created_at'].isoformat()
+    res_dict['confirmation_code'] = confirmation_code
+    res_dict['payment_provider'] = data.payment_provider
+    
+    await db.reservations.insert_one(res_dict)
+    
+    # Update room status
+    await db.rooms.update_one(
+        {"id": data.room_id},
+        {"$set": {"status": RoomStatus.BLOCKED.value}}
+    )
+    
+    return {
+        "id": reservation.id,
+        "confirmation_code": confirmation_code,
+        "status": "confirmed",
+        "message": "Reserva criada com sucesso"
+    }
+
+# ================== GUEST PORTAL ROUTES ==================
+
+@api_router.post("/guest-portal/login")
+async def guest_portal_login(credentials: GuestPortalLogin):
+    """Login to guest portal using email and confirmation code"""
+    # Find reservation by confirmation code
+    reservation = await db.reservations.find_one({
+        "confirmation_code": credentials.confirmation_code.upper()
+    })
+    
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    
+    # Get guest
+    guest = await db.guests.find_one({"id": reservation['guest_id']})
+    if not guest or guest.get('email', '').lower() != credentials.email.lower():
+        raise HTTPException(status_code=401, detail="Email não corresponde à reserva")
+    
+    # Get hotel
+    hotel = await db.hotels.find_one({"id": reservation['hotel_id']}, {"_id": 0})
+    
+    # Get room info
+    room = await db.rooms.find_one({"id": reservation['room_id']}, {"_id": 0})
+    room_type = await db.room_types.find_one({"id": reservation['room_type_id']}, {"_id": 0})
+    
+    # Get all reservations for this guest
+    all_reservations = await db.reservations.find(
+        {"guest_id": guest['id']}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Add room info to reservations
+    for res in all_reservations:
+        res_room = await db.rooms.find_one({"id": res['room_id']}, {"_id": 0})
+        res_room_type = await db.room_types.find_one({"id": res['room_type_id']}, {"_id": 0})
+        res['room_number'] = res_room.get('number') if res_room else 'N/A'
+        res['room_type_name'] = res_room_type.get('name') if res_room_type else 'N/A'
+    
+    # Current reservation with details
+    current_res = None
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    for res in all_reservations:
+        if res['status'] in ['confirmed', 'checked_in'] and res['check_in_date'] <= today <= res['check_out_date']:
+            current_res = res
+            break
+        elif res['status'] in ['confirmed', 'pending'] and res['check_in_date'] >= today:
+            current_res = res
+            break
+    
+    if not current_res:
+        current_res = reservation.copy()
+        current_res['room_number'] = room.get('number') if room else 'N/A'
+        current_res['room_type_name'] = room_type.get('name') if room_type else 'N/A'
+    
+    # Create guest token
+    token = create_access_token(guest['id'], guest.get('email', ''), 'guest')
+    
+    return {
+        "token": token,
+        "guest": {
+            "id": guest['id'],
+            "name": guest['name'],
+            "email": guest.get('email'),
+            "phone": guest.get('phone'),
+            "vip_status": guest.get('vip_status', False),
+            "total_stays": guest.get('total_stays', 0)
+        },
+        "hotel": hotel,
+        "current_reservation": current_res,
+        "reservations": all_reservations
+    }
+
+@api_router.post("/guest-portal/chat")
+async def guest_portal_chat(request: GuestChatRequest):
+    """Chat with Jarbas from guest portal"""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    api_key = os.environ.get('EMERGENT_LLM_KEY')
+    session_id = request.session_id or str(uuid.uuid4())
+    
+    system_message = """Você é o Jarbas, um mordomo digital elegante e acolhedor.
+Você atende hóspedes de hotéis de luxo com:
+- Informações sobre o hotel e serviços
+- Auxílio em reservas e solicitações
+- Recomendações personalizadas
+- Atendimento cordial 24/7
+
+Serviços disponíveis que você pode ajudar:
+- Room Service (café da manhã, almoço, jantar, lanches)
+- Housekeeping (limpeza, toalhas, amenities extras)
+- Concierge (reservas em restaurantes, passeios, transporte)
+- Spa (agendamento de tratamentos)
+- Informações do hotel (horários, localizações, WiFi)
+
+Seja educado, elegante e prestativo. Transmita hospitalidade premium. Fale em português brasileiro."""
+    
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=session_id,
+            system_message=system_message
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        user_message = UserMessage(text=request.message)
+        response = await chat.send_message(user_message)
+        
+        # Store chat history
+        await db.guest_chat_history.insert_one({
+            "session_id": session_id,
+            "guest_id": request.guest_id,
+            "user_message": request.message,
+            "ai_response": response,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"response": response, "session_id": session_id}
+    except Exception as e:
+        logger.error(f"Guest Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro no chat: {str(e)}")
+
 # ================== ROOT ==================
 
 @api_router.get("/")
 async def root():
-    return {"message": "Hestia Hotel Management Platform API", "version": "1.0.0"}
+    return {"message": "Hestia Hotel Management Platform API", "version": "2.0.0"}
 
 # Include the router in the main app
 app.include_router(api_router)
