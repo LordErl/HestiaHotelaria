@@ -456,6 +456,17 @@ class HestiaAPITester:
         # AI functionality
         self.test_ai_chat()
         
+        # Onda 2: Public Booking Engine APIs
+        print("\n🌊 Testing Onda 2 - Public Booking Engine APIs")
+        self.test_public_hotels_api()
+        self.test_public_availability_api()
+        self.test_public_reservation_creation()
+        
+        # Onda 2: Guest Portal APIs
+        print("\n🏨 Testing Onda 2 - Guest Portal APIs")
+        self.test_guest_portal_login()
+        self.test_guest_portal_chat()
+        
         # Print summary
         print("\n" + "=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
