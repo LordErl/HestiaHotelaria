@@ -33,10 +33,11 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - Atualiza status dos quartos
 - Reporta manutenções
 
-### 4. Hóspede (Portal futuro)
-- Faz reservas diretas
+### 4. Hóspede
+- Faz reservas diretas via Motor de Reservas
+- Acessa Portal do Hóspede com código de confirmação
 - Comunica-se com Jarbas (mordomo digital)
-- Acessa serviços do hotel
+- Solicita serviços do hotel
 
 ---
 
@@ -52,6 +53,8 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 7. Assistentes IA (Hestia e Jarbas)
 8. Multi-hotel support
 9. API REST completa
+10. Motor de Reservas público
+11. Portal do Hóspede
 
 ### Design Requirements
 - Tema "Royal Obsidian": fundo azul navy escuro (#0B1120)
@@ -82,31 +85,50 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - Housekeeping com fila de tarefas
 - Chat com assistentes IA
 
-✅ **Design System "Royal Obsidian"**
-- Paleta implementada completamente
-- Componentes Shadcn customizados
-- Animações suaves
-- Sidebar glassmórfico
+### Onda 2: Motor de Reservas + Portal do Hóspede (10/02/2026)
+✅ **Motor de Reservas (/booking)**
+- Página pública sem necessidade de login
+- Busca de disponibilidade por datas
+- Seleção de tipo de quarto com preços
+- Formulário de dados do hóspede
+- Seleção de método de pagamento (Stripe, Mercado Pago, PIX)
+- Confirmação com código de reserva
+- Design elegante com steps visuais
+
+✅ **Portal do Hóspede (/guest-portal)**
+- Login com email + código de confirmação
+- Visualização da reserva atual
+- Histórico de reservas
+- Quick actions (Room Service, Housekeeping, etc)
+- Chat integrado com Jarbas (IA)
+- Informações do hotel
+
+✅ **APIs Públicas**
+- GET /api/public/hotels
+- GET /api/public/availability
+- POST /api/public/reservations
+- POST /api/guest-portal/login
+- POST /api/guest-portal/chat
 
 ---
 
 ## Prioritized Backlog
 
 ### P0 - Crítico (Próxima Onda)
-- [ ] Motor de Reservas (Booking Engine) público
-- [ ] Portal do Hóspede
-- [ ] Integração com pagamentos (Stripe, Mercado Pago, CORA)
+- [ ] Integração real com Stripe (checkout session)
+- [ ] Integração Mercado Pago (PIX QR Code)
+- [ ] Notificações por email (confirmação de reserva)
+- [ ] Pré-check-in digital via Portal
 
 ### P1 - Alta Prioridade
 - [ ] Revenue Management básico
 - [ ] Relatórios exportáveis (PDF/Excel)
-- [ ] Notificações em tempo real
+- [ ] Notificações em tempo real (websockets)
 - [ ] Gestão de tarifas dinâmicas
 
 ### P2 - Média Prioridade
 - [ ] Channel Manager (OTAs)
 - [ ] Gestão de A&B (restaurante/bar)
-- [ ] Pré-check-in digital
 - [ ] NFC-e e fiscal
 
 ### P3 - Baixa Prioridade
@@ -122,7 +144,7 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 ```
 /app/
 ├── backend/
-│   ├── server.py          # FastAPI main app
+│   ├── server.py          # FastAPI main app (all routes)
 │   ├── requirements.txt   # Python dependencies
 │   └── .env              # Environment variables
 │
@@ -130,7 +152,7 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 │   ├── src/
 │   │   ├── context/       # AuthContext
 │   │   ├── components/    # UI components + Sidebar + Layout
-│   │   ├── pages/         # All page components
+│   │   ├── pages/         # All page components (11 pages)
 │   │   └── App.js         # Main app with routes
 │   └── .env              # Frontend env (REACT_APP_BACKEND_URL)
 │
@@ -140,43 +162,40 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 
 ### Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
-- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts, Axios
+- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts, Axios, date-fns
 - **Database**: MongoDB
 - **AI**: Gemini 3 Flash via emergentintegrations library
-- **Payments (Preparado)**: Stripe, Mercado Pago, CORA
+- **Payments (Preparado)**: Stripe, Mercado Pago, CORA, PIX
 
 ---
 
-## Next Tasks List
+## URLs da Aplicação
 
-1. **Onda 2: Motor de Reservas**
-   - Página pública de reservas
-   - Calendário de disponibilidade
-   - Integração com Stripe para pagamentos
-   - Confirmação por email
-
-2. **Onda 3: Portal do Hóspede**
-   - Login separado para hóspedes
-   - Histórico de reservas
-   - Comunicação com Jarbas
-   - Solicitações de serviços
-
-3. **Melhorias de UX**
-   - Responsividade mobile completa
-   - Dark/Light mode toggle
-   - Internacionalização (EN/ES)
+| Rota | Descrição | Acesso |
+|------|-----------|--------|
+| /login | Login administrativo | Público |
+| / | Dashboard | Admin |
+| /reservations | Gestão de reservas | Admin |
+| /rooms | Mapa de quartos | Admin |
+| /guests | Lista de hóspedes | Admin |
+| /check-in-out | Check-in/Check-out | Admin |
+| /housekeeping | Tarefas de limpeza | Admin |
+| /chat | Chat com IA | Admin |
+| /booking | Motor de Reservas | Público |
+| /guest-portal | Portal do Hóspede | Hóspede |
 
 ---
 
 ## Credentials & Configuration
 
-### Test User
+### Admin Test User
 - **Email**: admin@hestia.com
 - **Password**: admin123
 - **Role**: admin
 
 ### Demo Hotel
 - **Name**: Grand Hestia Palace
+- **ID**: 3fb1630b-f0b8-4340-923a-6a6217c590df
 - **Rooms**: 25 (5 andares x 5 quartos)
 - **Room Types**: Suite Deluxe, Suite Presidencial, Quarto Superior
 
@@ -188,4 +207,24 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 
 ---
 
-*Documento atualizado em: 10/02/2026*
+## Next Tasks List
+
+1. **Onda 3: Pagamentos Reais**
+   - Integração Stripe Checkout Session
+   - Mercado Pago PIX QR Code real
+   - Webhooks de confirmação de pagamento
+   - Atualização automática de status de reserva
+
+2. **Onda 4: Comunicação**
+   - Email de confirmação de reserva
+   - Notificações push
+   - Lembretes de check-in
+
+3. **Melhorias de UX**
+   - Responsividade mobile completa
+   - Dark/Light mode toggle
+   - Internacionalização (EN/ES)
+
+---
+
+*Documento atualizado em: 10/02/2026 - Onda 2 completa*
