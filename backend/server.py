@@ -517,7 +517,7 @@ async def get_revenue_chart(hotel_id: str, days: int = 7, current_user: dict = D
     data = []
     for i in range(days - 1, -1, -1):
         date = (datetime.now(timezone.utc) - timedelta(days=i)).strftime('%Y-%m-%d')
-        revenue = sum(float(r['total_amount']) for r in reservations if r.get('actual_check_out', '').startswith(date))
+        revenue = sum(float(r['total_amount'] or 0) for r in reservations if (r.get('actual_check_out') or '').startswith(date))
         data.append({"date": date, "revenue": revenue})
     
     return data
