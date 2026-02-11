@@ -442,11 +442,15 @@ async def do_check_out(reservation_id: str, current_user: dict = Depends(get_cur
     supabase.table('reservations').update({'status': 'checked_out', 'actual_check_out': now}).eq('id', reservation_id).execute()
     supabase.table('rooms').update({'status': 'cleaning'}).eq('id', reservation['room_id']).execute()
     
-    # Update guest stats
-    supabase.rpc('increment_guest_stats', {
-        'p_guest_id': reservation['guest_id'],
-        'p_amount': float(reservation['total_amount'])
-    }).execute()
+    # Update guest stats manually (increment total_stays and total_spent)
+    guest_result = supabase.table('guests').select('total_stays,total_spent').eq('id', reservation['guest_id']).single().execute()
+    if guest_result.data:
+        current_stays = guest_result.data.get('total_stays') or 0
+        current_spent = float(guest_result.data.get('total_spent') or 0)
+        supabase.table('guests').update({
+            'total_stays': current_stays + 1,
+            'total_spent': current_spent + float(reservation.get('total_amount') or 0)
+        }).eq('id', reservation['guest_id']).execute()
     
     return {"message": "Check-out realizado com sucesso", "check_out_time": now}
 
