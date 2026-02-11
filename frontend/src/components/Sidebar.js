@@ -24,7 +24,8 @@ import {
   ChevronRight,
   Hotel,
   ClipboardList,
-  Sparkles
+  Sparkles,
+  CreditCard
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -45,6 +46,7 @@ const Sidebar = () => {
     { to: '/check-in-out', icon: LogIn, label: 'Check-in/Out' },
     { to: '/housekeeping', icon: ClipboardList, label: 'Housekeeping' },
     { to: '/chat', icon: MessageSquare, label: 'Assistente IA' },
+    { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
   ];
 
   return (
