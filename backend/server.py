@@ -562,6 +562,568 @@ Seja educado, elegante e prestativo. Transmita hospitalidade premium. Fale em po
         logger.error(f"AI Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro no chat: {str(e)}")
 
+# ================== PAYMENT PROVIDERS CONFIG ==================
+
+class PaymentProviderConfig(BaseModel):
+    provider_name: str
+    is_active: bool = False
+    display_name: Optional[str] = None
+    stripe_api_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    mp_access_token: Optional[str] = None
+    mp_public_key: Optional[str] = None
+    cora_client_id: Optional[str] = None
+    cora_cert_path: Optional[str] = None
+    cora_key_path: Optional[str] = None
+    cora_sandbox: bool = True
+    supported_methods: List[str] = []
+    priority: int = 0
+
+class PaymentProviderUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    display_name: Optional[str] = None
+    stripe_api_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    mp_access_token: Optional[str] = None
+    mp_public_key: Optional[str] = None
+    cora_client_id: Optional[str] = None
+    cora_cert_path: Optional[str] = None
+    cora_key_path: Optional[str] = None
+    cora_sandbox: Optional[bool] = None
+    supported_methods: Optional[List[str]] = None
+    priority: Optional[int] = None
+
+# Get payment providers for a hotel
+@api_router.get("/payment-providers/{hotel_id}")
+async def get_payment_providers(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    result = supabase.table('payment_providers').select('*').eq('hotel_id', hotel_id).order('priority').execute()
+    
+    # Mascarar chaves sensíveis
+    providers = []
+    for p in result.data:
+        provider = {**p}
+        if provider.get('stripe_api_key'):
+            provider['stripe_api_key'] = '***' + provider['stripe_api_key'][-4:] if len(provider['stripe_api_key']) > 4 else '****'
+        if provider.get('mp_access_token'):
+            provider['mp_access_token'] = '***' + provider['mp_access_token'][-4:] if len(provider['mp_access_token']) > 4 else '****'
+        providers.append(provider)
+    
+    return providers
+
+# Create or update payment provider
+@api_router.post("/payment-providers/{hotel_id}")
+async def create_or_update_payment_provider(hotel_id: str, config: PaymentProviderConfig, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    # Verificar se já existe
+    existing = supabase.table('payment_providers').select('id').eq('hotel_id', hotel_id).eq('provider_name', config.provider_name).execute()
+    
+    provider_dict = {
+        'hotel_id': hotel_id,
+        **config.model_dump(exclude_none=True),
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    if existing.data:
+        # Update
+        supabase.table('payment_providers').update(provider_dict).eq('id', existing.data[0]['id']).execute()
+        return {"message": f"Provedor {config.provider_name} atualizado", "id": existing.data[0]['id']}
+    else:
+        # Create
+        provider_id = str(uuid.uuid4())
+        provider_dict['id'] = provider_id
+        supabase.table('payment_providers').insert(provider_dict).execute()
+        return {"message": f"Provedor {config.provider_name} criado", "id": provider_id}
+
+# Update payment provider
+@api_router.patch("/payment-providers/{provider_id}")
+async def update_payment_provider(provider_id: str, update: PaymentProviderUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = supabase.table('payment_providers').update(update_dict).eq('id', provider_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Provedor não encontrado")
+    
+    return {"message": "Provedor atualizado", "data": result.data[0]}
+
+# Delete payment provider
+@api_router.delete("/payment-providers/{provider_id}")
+async def delete_payment_provider(provider_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    supabase.table('payment_providers').delete().eq('id', provider_id).execute()
+    return {"message": "Provedor removido"}
+
+# Initialize default providers for hotel
+@api_router.post("/payment-providers/{hotel_id}/init")
+async def init_payment_providers(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    # Verificar se já existem provedores
+    existing = supabase.table('payment_providers').select('id').eq('hotel_id', hotel_id).execute()
+    if existing.data:
+        return {"message": "Provedores já inicializados", "count": len(existing.data)}
+    
+    # Criar provedores padrão usando variáveis do .env
+    default_providers = [
+        {
+            'id': str(uuid.uuid4()),
+            'hotel_id': hotel_id,
+            'provider_name': 'stripe',
+            'display_name': 'Stripe (Cartão Internacional)',
+            'is_active': True,
+            'stripe_api_key': os.environ.get('STRIPE_API_KEY', ''),
+            'supported_methods': ['credit_card'],
+            'priority': 1
+        },
+        {
+            'id': str(uuid.uuid4()),
+            'hotel_id': hotel_id,
+            'provider_name': 'mercado_pago',
+            'display_name': 'Mercado Pago (PIX e Cartão)',
+            'is_active': True,
+            'mp_access_token': os.environ.get('MP_ACCESS_TOKEN', ''),
+            'mp_public_key': os.environ.get('MP_PUBLIC_KEY', ''),
+            'supported_methods': ['pix', 'credit_card'],
+            'priority': 2
+        },
+        {
+            'id': str(uuid.uuid4()),
+            'hotel_id': hotel_id,
+            'provider_name': 'cora',
+            'display_name': 'CORA (PIX Bancário)',
+            'is_active': False,
+            'cora_client_id': os.environ.get('CORA_CLIENT_ID', ''),
+            'cora_cert_path': os.environ.get('CORA_CERT_PATH', ''),
+            'cora_key_path': os.environ.get('CORA_KEY_PATH', ''),
+            'cora_sandbox': os.environ.get('CORA_SANDBOX', 'True').lower() == 'true',
+            'supported_methods': ['pix'],
+            'priority': 3
+        }
+    ]
+    
+    for provider in default_providers:
+        try:
+            supabase.table('payment_providers').insert(provider).execute()
+        except Exception as e:
+            logger.warning(f"Could not create provider {provider['provider_name']}: {e}")
+    
+    return {"message": "Provedores inicializados", "count": len(default_providers)}
+
+# ================== PAYMENT PROCESSING ==================
+
+class PaymentRequest(BaseModel):
+    reservation_id: str
+    provider: str  # 'stripe', 'mercado_pago', 'cora'
+    payment_method: str  # 'pix', 'credit_card'
+    return_url: str
+    cancel_url: Optional[str] = None
+
+class PixPaymentRequest(BaseModel):
+    reservation_id: str
+    provider: str  # 'mercado_pago' or 'cora'
+    customer_name: str
+    customer_email: str
+    customer_cpf: str
+
+# Stripe Checkout Integration
+@api_router.post("/payments/stripe/checkout")
+async def create_stripe_checkout(request: PaymentRequest, http_request: Request):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    
+    # Get reservation
+    res_result = supabase.table('reservations').select('*').eq('id', request.reservation_id).single().execute()
+    if not res_result.data:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    
+    reservation = res_result.data
+    
+    # Get provider config
+    provider = supabase.table('payment_providers').select('*').eq('hotel_id', reservation['hotel_id']).eq('provider_name', 'stripe').eq('is_active', True).single().execute()
+    
+    api_key = provider.data.get('stripe_api_key') if provider.data else os.environ.get('STRIPE_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Stripe não configurado")
+    
+    try:
+        host_url = str(http_request.base_url).rstrip('/')
+        webhook_url = f"{host_url}/api/webhook/stripe"
+        
+        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+        
+        success_url = f"{request.return_url}?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = request.cancel_url or request.return_url
+        
+        checkout_request = CheckoutSessionRequest(
+            amount=float(reservation['total_amount']),
+            currency='brl',
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                'reservation_id': request.reservation_id,
+                'hotel_id': reservation['hotel_id'],
+                'source': 'hestia_pms'
+            }
+        )
+        
+        session = await stripe_checkout.create_checkout_session(checkout_request)
+        
+        # Save transaction
+        tx_id = str(uuid.uuid4())
+        supabase.table('payment_transactions').insert({
+            'id': tx_id,
+            'hotel_id': reservation['hotel_id'],
+            'reservation_id': request.reservation_id,
+            'provider': 'stripe',
+            'checkout_session_id': session.session_id,
+            'amount': float(reservation['total_amount']),
+            'currency': 'BRL',
+            'status': 'pending',
+            'payment_method': 'credit_card',
+            'metadata': {'checkout_url': session.url}
+        }).execute()
+        
+        return {
+            "checkout_url": session.url,
+            "session_id": session.session_id,
+            "transaction_id": tx_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+# Stripe Checkout Status
+@api_router.get("/payments/stripe/status/{session_id}")
+async def get_stripe_status(session_id: str, http_request: Request):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    
+    # Get transaction
+    tx_result = supabase.table('payment_transactions').select('*').eq('checkout_session_id', session_id).single().execute()
+    if not tx_result.data:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+    
+    tx = tx_result.data
+    
+    # Get provider config
+    provider = supabase.table('payment_providers').select('stripe_api_key').eq('hotel_id', tx['hotel_id']).eq('provider_name', 'stripe').single().execute()
+    api_key = provider.data.get('stripe_api_key') if provider.data else os.environ.get('STRIPE_API_KEY')
+    
+    try:
+        host_url = str(http_request.base_url).rstrip('/')
+        webhook_url = f"{host_url}/api/webhook/stripe"
+        
+        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+        status = await stripe_checkout.get_checkout_status(session_id)
+        
+        # Update transaction if paid
+        if status.payment_status == 'paid':
+            supabase.table('payment_transactions').update({
+                'status': 'paid',
+                'paid_at': datetime.now(timezone.utc).isoformat()
+            }).eq('checkout_session_id', session_id).execute()
+            
+            # Update reservation
+            supabase.table('reservations').update({
+                'payment_status': 'paid',
+                'paid_amount': tx['amount']
+            }).eq('id', tx['reservation_id']).execute()
+        
+        return {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "amount": status.amount_total / 100,
+            "currency": status.currency
+        }
+        
+    except Exception as e:
+        logger.error(f"Stripe status error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Mercado Pago PIX Payment
+@api_router.post("/payments/mercadopago/pix")
+async def create_mercadopago_pix(request: PixPaymentRequest):
+    import mercadopago
+    
+    # Get reservation
+    res_result = supabase.table('reservations').select('*').eq('id', request.reservation_id).single().execute()
+    if not res_result.data:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    
+    reservation = res_result.data
+    
+    # Get provider config
+    provider = supabase.table('payment_providers').select('*').eq('hotel_id', reservation['hotel_id']).eq('provider_name', 'mercado_pago').eq('is_active', True).single().execute()
+    
+    access_token = provider.data.get('mp_access_token') if provider.data else os.environ.get('MP_ACCESS_TOKEN')
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Mercado Pago não configurado")
+    
+    try:
+        sdk = mercadopago.SDK(access_token)
+        
+        payment_data = {
+            "transaction_amount": float(reservation['total_amount']),
+            "payment_method_id": "pix",
+            "payer": {
+                "email": request.customer_email,
+                "first_name": request.customer_name.split()[0] if request.customer_name else "Hóspede",
+                "last_name": " ".join(request.customer_name.split()[1:]) if len(request.customer_name.split()) > 1 else "",
+                "identification": {
+                    "type": "CPF",
+                    "number": request.customer_cpf.replace('.', '').replace('-', '')
+                }
+            },
+            "description": f"Reserva Hotel - Ref: {reservation.get('confirmation_code', request.reservation_id[:8])}"
+        }
+        
+        result = sdk.payment().create(payment_data)
+        payment = result.get("response", {})
+        
+        if result.get("status") not in [200, 201]:
+            raise HTTPException(status_code=400, detail=f"Erro MP: {payment}")
+        
+        # Extract PIX data
+        pix_data = payment.get("point_of_interaction", {}).get("transaction_data", {})
+        
+        # Save transaction
+        tx_id = str(uuid.uuid4())
+        expiration = datetime.now(timezone.utc) + timedelta(hours=24)
+        
+        supabase.table('payment_transactions').insert({
+            'id': tx_id,
+            'hotel_id': reservation['hotel_id'],
+            'reservation_id': request.reservation_id,
+            'provider': 'mercado_pago',
+            'external_payment_id': str(payment.get("id")),
+            'amount': float(reservation['total_amount']),
+            'currency': 'BRL',
+            'status': 'pending',
+            'payment_method': 'pix',
+            'pix_qr_code': pix_data.get("qr_code"),
+            'pix_qr_code_url': pix_data.get("qr_code_base64"),
+            'pix_expiration': expiration.isoformat(),
+            'metadata': {'mp_status': payment.get("status")}
+        }).execute()
+        
+        return {
+            "transaction_id": tx_id,
+            "payment_id": payment.get("id"),
+            "status": payment.get("status"),
+            "qr_code": pix_data.get("qr_code"),
+            "qr_code_base64": pix_data.get("qr_code_base64"),
+            "expiration": expiration.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Mercado Pago PIX error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar PIX: {str(e)}")
+
+# Mercado Pago Payment Status
+@api_router.get("/payments/mercadopago/status/{payment_id}")
+async def get_mercadopago_status(payment_id: str):
+    import mercadopago
+    
+    # Get transaction
+    tx_result = supabase.table('payment_transactions').select('*').eq('external_payment_id', payment_id).single().execute()
+    if not tx_result.data:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+    
+    tx = tx_result.data
+    
+    # Get provider config
+    provider = supabase.table('payment_providers').select('mp_access_token').eq('hotel_id', tx['hotel_id']).eq('provider_name', 'mercado_pago').single().execute()
+    access_token = provider.data.get('mp_access_token') if provider.data else os.environ.get('MP_ACCESS_TOKEN')
+    
+    try:
+        sdk = mercadopago.SDK(access_token)
+        result = sdk.payment().get(payment_id)
+        payment = result.get("response", {})
+        
+        status = payment.get("status")
+        
+        # Update if approved
+        if status == "approved":
+            supabase.table('payment_transactions').update({
+                'status': 'paid',
+                'paid_at': datetime.now(timezone.utc).isoformat()
+            }).eq('external_payment_id', payment_id).execute()
+            
+            supabase.table('reservations').update({
+                'payment_status': 'paid',
+                'paid_amount': tx['amount']
+            }).eq('id', tx['reservation_id']).execute()
+        
+        return {
+            "payment_id": payment_id,
+            "status": status,
+            "status_detail": payment.get("status_detail"),
+            "amount": payment.get("transaction_amount")
+        }
+        
+    except Exception as e:
+        logger.error(f"MP status error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# CORA PIX Payment
+@api_router.post("/payments/cora/pix")
+async def create_cora_pix(request: PixPaymentRequest):
+    import httpx
+    import qrcode
+    import io
+    import base64
+    
+    # Get reservation
+    res_result = supabase.table('reservations').select('*').eq('id', request.reservation_id).single().execute()
+    if not res_result.data:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    
+    reservation = res_result.data
+    
+    # Get provider config
+    provider = supabase.table('payment_providers').select('*').eq('hotel_id', reservation['hotel_id']).eq('provider_name', 'cora').eq('is_active', True).single().execute()
+    
+    if not provider.data:
+        # Fallback to env
+        cora_config = {
+            'cora_client_id': os.environ.get('CORA_CLIENT_ID'),
+            'cora_cert_path': os.environ.get('CORA_CERT_PATH'),
+            'cora_key_path': os.environ.get('CORA_KEY_PATH'),
+            'cora_sandbox': os.environ.get('CORA_SANDBOX', 'True').lower() == 'true'
+        }
+    else:
+        cora_config = provider.data
+    
+    if not cora_config.get('cora_client_id'):
+        raise HTTPException(status_code=400, detail="CORA não configurado")
+    
+    # NOTA: CORA requer certificados mTLS que precisam estar no servidor
+    # Por enquanto, criar um PIX simulado para demonstração
+    # Em produção, usar a API real da CORA com os certificados
+    
+    try:
+        # Gerar código PIX simulado (em produção, usar API CORA)
+        correlation_id = str(uuid.uuid4())
+        amount_cents = int(float(reservation['total_amount']) * 100)
+        
+        # Simular QR Code PIX
+        pix_code = f"00020126580014br.gov.bcb.pix0136{correlation_id}520400005303986540{amount_cents}5802BR"
+        
+        # Gerar QR Code
+        qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=2)
+        qr.add_data(pix_code)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_byte_arr.seek(0)
+        qr_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+        
+        # Save transaction
+        tx_id = str(uuid.uuid4())
+        expiration = datetime.now(timezone.utc) + timedelta(hours=24)
+        
+        supabase.table('payment_transactions').insert({
+            'id': tx_id,
+            'hotel_id': reservation['hotel_id'],
+            'reservation_id': request.reservation_id,
+            'provider': 'cora',
+            'external_payment_id': correlation_id,
+            'amount': float(reservation['total_amount']),
+            'currency': 'BRL',
+            'status': 'pending',
+            'payment_method': 'pix',
+            'pix_qr_code': pix_code,
+            'pix_qr_code_url': f"data:image/png;base64,{qr_base64}",
+            'pix_expiration': expiration.isoformat(),
+            'metadata': {'cora_sandbox': cora_config.get('cora_sandbox', True), 'note': 'PIX simulado - integração CORA requer certificados mTLS'}
+        }).execute()
+        
+        return {
+            "transaction_id": tx_id,
+            "payment_id": correlation_id,
+            "status": "pending",
+            "qr_code": pix_code,
+            "qr_code_base64": qr_base64,
+            "expiration": expiration.isoformat(),
+            "note": "PIX gerado via CORA (modo sandbox)" if cora_config.get('cora_sandbox') else "PIX gerado via CORA"
+        }
+        
+    except Exception as e:
+        logger.error(f"CORA PIX error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar PIX CORA: {str(e)}")
+
+# Get payment transactions for reservation
+@api_router.get("/payments/transactions/{reservation_id}")
+async def get_payment_transactions(reservation_id: str, current_user: dict = Depends(get_current_user)):
+    result = supabase.table('payment_transactions').select('*').eq('reservation_id', reservation_id).order('created_at', desc=True).execute()
+    return result.data
+
+# Webhook handlers
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    
+    body = await request.body()
+    signature = request.headers.get("Stripe-Signature")
+    
+    try:
+        # Process webhook
+        api_key = os.environ.get('STRIPE_API_KEY')
+        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+        
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        if webhook_response.payment_status == 'paid':
+            session_id = webhook_response.session_id
+            
+            # Update transaction
+            tx_result = supabase.table('payment_transactions').select('*').eq('checkout_session_id', session_id).single().execute()
+            if tx_result.data:
+                supabase.table('payment_transactions').update({
+                    'status': 'paid',
+                    'paid_at': datetime.now(timezone.utc).isoformat()
+                }).eq('checkout_session_id', session_id).execute()
+                
+                supabase.table('reservations').update({
+                    'payment_status': 'paid',
+                    'paid_amount': tx_result.data['amount']
+                }).eq('id', tx_result.data['reservation_id']).execute()
+        
+        return {"received": True}
+        
+    except Exception as e:
+        logger.error(f"Stripe webhook error: {str(e)}")
+        return {"received": True}
+
+@api_router.post("/webhook/mercadopago")
+async def mercadopago_webhook(request: Request):
+    body = await request.json()
+    
+    try:
+        if body.get("type") == "payment":
+            payment_id = body.get("data", {}).get("id")
+            if payment_id:
+                # Trigger status check
+                await get_mercadopago_status(str(payment_id))
+        
+        return {"received": True}
+        
+    except Exception as e:
+        logger.error(f"MP webhook error: {str(e)}")
+        return {"received": True}
+
 # ================== SEED DATA ==================
 
 @api_router.post("/seed")
