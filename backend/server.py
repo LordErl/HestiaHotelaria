@@ -459,23 +459,23 @@ async def get_dashboard_stats(hotel_id: str, current_user: dict = Depends(get_cu
     
     # Room stats
     rooms_result = supabase.table('rooms').select('status').eq('hotel_id', hotel_id).execute()
-    rooms = rooms_result.data
+    rooms = rooms_result.data or []
     total_rooms = len(rooms)
-    occupied_rooms = len([r for r in rooms if r['status'] == 'occupied'])
-    available_rooms = len([r for r in rooms if r['status'] == 'available'])
+    occupied_rooms = len([r for r in rooms if r.get('status') == 'occupied'])
+    available_rooms = len([r for r in rooms if r.get('status') == 'available'])
     
     # Reservation stats
     res_result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).execute()
-    reservations = res_result.data
+    reservations = res_result.data or []
     
-    todays_checkins = len([r for r in reservations if r['check_in_date'] == today and r['status'] in ['pending', 'confirmed']])
-    todays_checkouts = len([r for r in reservations if r['check_out_date'] == today and r['status'] == 'checked_in'])
-    pending_reservations = len([r for r in reservations if r['status'] == 'pending'])
-    guests_in_house = len([r for r in reservations if r['status'] == 'checked_in'])
+    todays_checkins = len([r for r in reservations if r.get('check_in_date') == today and r.get('status') in ['pending', 'confirmed']])
+    todays_checkouts = len([r for r in reservations if r.get('check_out_date') == today and r.get('status') == 'checked_in'])
+    pending_reservations = len([r for r in reservations if r.get('status') == 'pending'])
+    guests_in_house = len([r for r in reservations if r.get('status') == 'checked_in'])
     
-    # Revenue
-    revenue_today = sum(float(r['total_amount']) for r in reservations if r.get('actual_check_out', '').startswith(today))
-    revenue_month = sum(float(r['total_amount']) for r in reservations if r.get('actual_check_out', '').startswith(month_start[:7]))
+    # Revenue - handle None values
+    revenue_today = sum(float(r.get('total_amount') or 0) for r in reservations if (r.get('actual_check_out') or '').startswith(today))
+    revenue_month = sum(float(r.get('total_amount') or 0) for r in reservations if (r.get('actual_check_out') or '').startswith(month_start[:7]))
     
     occupancy_rate = (occupied_rooms / total_rooms * 100) if total_rooms > 0 else 0
     
