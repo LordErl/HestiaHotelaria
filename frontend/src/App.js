@@ -13,6 +13,7 @@ import HousekeepingPage from './pages/HousekeepingPage';
 import ChatPage from './pages/ChatPage';
 import BookingEnginePage from './pages/BookingEnginePage';
 import GuestPortalPage from './pages/GuestPortalPage';
+import PaymentSettingsPage from './pages/PaymentSettingsPage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/check-in-out" element={<CheckInOutPage />} />
         <Route path="/housekeeping" element={<HousekeepingPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/payment-settings" element={<PaymentSettingsPage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
