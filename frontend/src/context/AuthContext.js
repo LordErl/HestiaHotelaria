@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -16,21 +16,13 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('hestia_token'));
+  const [token, setToken] = useState(() => localStorage.getItem('hestia_token'));
   const [loading, setLoading] = useState(true);
   const [currentHotel, setCurrentHotel] = useState(null);
 
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async (authToken) => {
     try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
       
@@ -39,13 +31,29 @@ export const AuthProvider = ({ children }) => {
       if (hotelsRes.data.length > 0) {
         setCurrentHotel(hotelsRes.data[0]);
       }
+      return true;
     } catch (error) {
       console.error('Auth error:', error);
-      logout();
-    } finally {
-      setLoading(false);
+      // Clear invalid token
+      localStorage.removeItem('hestia_token');
+      delete axios.defaults.headers.common['Authorization'];
+      setToken(null);
+      setUser(null);
+      setCurrentHotel(null);
+      return false;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const savedToken = localStorage.getItem('hestia_token');
+      if (savedToken) {
+        await fetchUser(savedToken);
+      }
+      setLoading(false);
+    };
+    initAuth();
+  }, [fetchUser]);
 
   const login = async (email, password) => {
     try {
@@ -130,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       seedDemoData,
-      isAuthenticated: !!user
+      isAuthenticated: !!user && !!token
     }}>
       {children}
     </AuthContext.Provider>
