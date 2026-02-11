@@ -38,6 +38,19 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - Tabelas: users, hotels, room_types, rooms, guests, reservations, chat_history
 - RLS policies configuradas
 
+### Onda 3: Integração de Pagamentos ✅ (11/02/2026)
+- **Backend implementado** com endpoints para:
+  - Stripe Checkout (cartão internacional)
+  - Mercado Pago (PIX e cartão)
+  - CORA (PIX bancário)
+- **Painel administrativo** para configuração de provedores (/payment-settings)
+- **Funcionalidades**:
+  - Ativar/desativar provedores
+  - Configurar chaves de API por hotel
+  - Definir prioridade de exibição
+  - Gerenciar certificados CORA (mTLS)
+- **Variáveis de ambiente** atualizadas com credenciais MP e CORA
+
 ---
 
 ## Technical Stack
@@ -46,6 +59,7 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - **Database**: Supabase PostgreSQL
 - **Frontend**: React 19 + Tailwind CSS + Shadcn UI
 - **AI**: Gemini 3 Flash via emergentintegrations
+- **Payments**: Stripe, Mercado Pago SDK, CORA API
 - **Design**: Royal Obsidian (dourado #D4AF37 + navy #0B1120)
 
 ---
@@ -64,6 +78,26 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 | /chat | Chat com IA |
 | /booking | Motor de Reservas (público) |
 | /guest-portal | Portal do Hóspede |
+| /payment-settings | Configurações de Pagamento (admin) |
+
+---
+
+## API Endpoints de Pagamento
+
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| /api/payment-providers/{hotel_id} | GET | Lista provedores de pagamento |
+| /api/payment-providers/{hotel_id} | POST | Cria/atualiza provedor |
+| /api/payment-providers/{hotel_id}/init | POST | Inicializa provedores padrão |
+| /api/payment-providers/{provider_id} | PATCH | Atualiza configuração |
+| /api/payment-providers/{provider_id} | DELETE | Remove provedor |
+| /api/payments/stripe/checkout | POST | Cria checkout Stripe |
+| /api/payments/stripe/status/{session_id} | GET | Verifica status Stripe |
+| /api/payments/mercadopago/pix | POST | Cria PIX Mercado Pago |
+| /api/payments/mercadopago/status/{payment_id} | GET | Verifica status MP |
+| /api/payments/cora/pix | POST | Cria PIX CORA |
+| /api/webhook/stripe | POST | Webhook Stripe |
+| /api/webhook/mercadopago | POST | Webhook Mercado Pago |
 
 ---
 
@@ -73,15 +107,45 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - **Hotel Demo**: Grand Hestia Palace
 - **Supabase Project**: kcwmyhklmkaadgnqedrr
 
+### Chaves de Pagamento (no .env)
+- **Stripe**: sk_test_emergent (teste)
+- **Mercado Pago**: APP_USR-4419048675246744-... (produção)
+- **CORA**: int-5PTFg75sSxJfcIYUFgQWqe (produção - requer certificados mTLS)
+
+---
+
+## Pendências Imediatas (P0)
+
+### ⚠️ AÇÃO NECESSÁRIA: Executar SQL no Supabase
+O script `/app/backend/payment_schema.sql` precisa ser executado no Supabase SQL Editor para criar as tabelas:
+- `payment_providers` - Configurações dos provedores
+- `payment_transactions` - Histórico de transações
+
 ---
 
 ## Next Tasks
 
-1. Integração real com Stripe/Mercado Pago
-2. Notificações por email
-3. Pré-check-in digital
-4. Revenue Management
+1. ✅ ~~Integração com Stripe/Mercado Pago/CORA~~ (implementado)
+2. Executar script SQL no Supabase (ação do usuário)
+3. Integrar pagamentos no fluxo de reservas do booking engine
+4. Notificações por email de confirmação
+5. Pré-check-in digital
+6. Revenue Management
 
 ---
 
-*Atualizado: 11/02/2026 - Migração Supabase completa*
+## Future Backlog
+
+- Módulo Financeiro & Estoque
+- Housekeeping & Manutenção expandido
+- Distribuição & Vendas (OTAs)
+- Revenue Management
+- Gestão de Pessoas
+- Segurança
+- ESG
+- Eventos
+- Sistema de Auditoria
+
+---
+
+*Atualizado: 11/02/2026 - Integração de Pagamentos implementada*
