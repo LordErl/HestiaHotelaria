@@ -526,6 +526,404 @@ async def get_revenue_chart(hotel_id: str, days: int = 7, current_user: dict = D
     
     return data
 
+# ================== PUBLIC PAYMENT PROVIDERS ==================
+
+@api_router.get("/public/payment-providers/{hotel_id}")
+async def get_public_payment_providers(hotel_id: str):
+    """Get active payment providers for public booking"""
+    result = supabase.table('payment_providers').select('id,provider_name,display_name,supported_methods,is_active').eq('hotel_id', hotel_id).eq('is_active', True).order('priority').execute()
+    return result.data
+
+# ================== EMAIL NOTIFICATIONS ==================
+
+import resend
+import asyncio
+
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@hestia.com')
+
+async def send_email_async(to_email: str, subject: str, html_content: str):
+    """Send email asynchronously"""
+    resend_key = os.environ.get('RESEND_API_KEY')
+    if not resend_key:
+        logger.warning("RESEND_API_KEY not configured, skipping email")
+        return None
+    
+    resend.api_key = resend_key
+    params = {
+        "from": SENDER_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content
+    }
+    
+    try:
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Email sent to {to_email}")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        return None
+
+def get_reservation_confirmation_html(reservation: dict, hotel: dict, room_type: dict, guest: dict) -> str:
+    """Generate HTML for reservation confirmation email"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0B1120; color: #F8FAFC; margin: 0; padding: 40px; }}
+            .container {{ max-width: 600px; margin: 0 auto; background-color: #151E32; border-radius: 16px; overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; }}
+            .header h1 {{ color: #0B1120; margin: 0; font-size: 28px; }}
+            .content {{ padding: 30px; }}
+            .confirmation-code {{ font-size: 32px; font-weight: bold; color: #D4AF37; text-align: center; margin: 20px 0; padding: 20px; background-color: #0B1120; border-radius: 8px; }}
+            .details {{ background-color: #0B1120; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+            .details-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1E3A5F; }}
+            .details-row:last-child {{ border-bottom: none; }}
+            .label {{ color: #94A3B8; }}
+            .value {{ color: #F8FAFC; font-weight: 500; }}
+            .total {{ font-size: 24px; color: #D4AF37; font-weight: bold; text-align: right; margin-top: 20px; }}
+            .footer {{ text-align: center; padding: 20px; color: #94A3B8; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✨ Reserva Confirmada</h1>
+            </div>
+            <div class="content">
+                <p>Olá, <strong>{guest.get('full_name', 'Hóspede')}</strong>!</p>
+                <p>Sua reserva no <strong>{hotel.get('name', 'Hotel')}</strong> foi confirmada com sucesso.</p>
+                
+                <div class="confirmation-code">
+                    {reservation.get('confirmation_code', reservation.get('id', '')[:8].upper())}
+                </div>
+                
+                <div class="details">
+                    <div class="details-row">
+                        <span class="label">Hotel</span>
+                        <span class="value">{hotel.get('name', '')}</span>
+                    </div>
+                    <div class="details-row">
+                        <span class="label">Acomodação</span>
+                        <span class="value">{room_type.get('name', '')}</span>
+                    </div>
+                    <div class="details-row">
+                        <span class="label">Check-in</span>
+                        <span class="value">{reservation.get('check_in_date', '')}</span>
+                    </div>
+                    <div class="details-row">
+                        <span class="label">Check-out</span>
+                        <span class="value">{reservation.get('check_out_date', '')}</span>
+                    </div>
+                    <div class="details-row">
+                        <span class="label">Hóspedes</span>
+                        <span class="value">{reservation.get('adults', 1)} adulto(s)</span>
+                    </div>
+                </div>
+                
+                <div class="total">
+                    Total: R$ {reservation.get('total_amount', 0):,.2f}
+                </div>
+                
+                <p style="margin-top: 30px;">
+                    Acesse o <a href="#" style="color: #D4AF37;">Portal do Hóspede</a> com seu código de confirmação para mais informações.
+                </p>
+            </div>
+            <div class="footer">
+                <p>© 2024 Hestia Hotel Management</p>
+                <p>Este é um email automático, não responda.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+def get_payment_confirmation_html(reservation: dict, payment: dict, hotel: dict) -> str:
+    """Generate HTML for payment confirmation email"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0B1120; color: #F8FAFC; margin: 0; padding: 40px; }}
+            .container {{ max-width: 600px; margin: 0 auto; background-color: #151E32; border-radius: 16px; overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 30px; text-align: center; }}
+            .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+            .content {{ padding: 30px; }}
+            .amount {{ font-size: 40px; font-weight: bold; color: #10B981; text-align: center; margin: 20px 0; }}
+            .details {{ background-color: #0B1120; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+            .footer {{ text-align: center; padding: 20px; color: #94A3B8; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✅ Pagamento Confirmado</h1>
+            </div>
+            <div class="content">
+                <p>Seu pagamento foi processado com sucesso!</p>
+                <div class="amount">R$ {payment.get('amount', 0):,.2f}</div>
+                <div class="details">
+                    <p><strong>Hotel:</strong> {hotel.get('name', '')}</p>
+                    <p><strong>Reserva:</strong> {reservation.get('confirmation_code', '')}</p>
+                    <p><strong>Método:</strong> {payment.get('payment_method', 'PIX').upper()}</p>
+                    <p><strong>ID Transação:</strong> {payment.get('external_payment_id', payment.get('id', ''))}</p>
+                </div>
+            </div>
+            <div class="footer">
+                <p>© 2024 Hestia Hotel Management</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+# Update reservation creation to send email
+@api_router.post("/public/reservations")
+async def create_public_reservation(data: dict):
+    """Create reservation from public booking engine"""
+    from fastapi import BackgroundTasks
+    
+    # Create guest if needed
+    guest_data = data.get('guest', {})
+    guest_result = supabase.table('guests').select('id').eq('email', guest_data.get('email')).execute()
+    
+    if guest_result.data:
+        guest_id = guest_result.data[0]['id']
+    else:
+        guest_id = str(uuid.uuid4())
+        supabase.table('guests').insert({
+            'id': guest_id,
+            'full_name': guest_data.get('name'),
+            'email': guest_data.get('email'),
+            'phone': guest_data.get('phone'),
+            'document_id': guest_data.get('document_number'),
+            'total_stays': 0,
+            'total_spent': 0
+        }).execute()
+    
+    # Create reservation
+    reservation_id = str(uuid.uuid4())
+    confirmation_code = f"HES{str(uuid.uuid4())[:6].upper()}"
+    
+    reservation = {
+        'id': reservation_id,
+        'hotel_id': data.get('hotel_id'),
+        'guest_id': guest_id,
+        'room_id': data.get('room_id'),
+        'room_type_id': data.get('room_type_id'),
+        'check_in_date': data.get('check_in_date'),
+        'check_out_date': data.get('check_out_date'),
+        'adults': data.get('adults', 1),
+        'children': data.get('children', 0),
+        'total_amount': data.get('total_amount'),
+        'status': 'confirmed',
+        'payment_status': 'pending',
+        'special_requests': guest_data.get('special_requests'),
+        'confirmation_code': confirmation_code
+    }
+    
+    supabase.table('reservations').insert(reservation).execute()
+    
+    # Get hotel and room type for email
+    hotel_result = supabase.table('hotels').select('*').eq('id', data.get('hotel_id')).single().execute()
+    room_type_result = supabase.table('room_types').select('*').eq('id', data.get('room_type_id')).single().execute()
+    
+    # Send confirmation email in background
+    asyncio.create_task(send_email_async(
+        guest_data.get('email'),
+        f"Reserva Confirmada - {confirmation_code}",
+        get_reservation_confirmation_html(reservation, hotel_result.data or {}, room_type_result.data or {}, {'full_name': guest_data.get('name')})
+    ))
+    
+    return {**reservation, 'confirmation_code': confirmation_code}
+
+# ================== REVENUE MANAGEMENT ==================
+
+class PricingRule(BaseModel):
+    room_type_id: str
+    rule_type: str  # 'occupancy', 'advance_booking', 'day_of_week', 'season'
+    condition: dict
+    adjustment_type: str  # 'percentage', 'fixed'
+    adjustment_value: float
+    priority: int = 0
+    is_active: bool = True
+
+@api_router.get("/revenue/analytics")
+async def get_revenue_analytics(hotel_id: str, period: str = "30d", current_user: dict = Depends(get_current_user)):
+    """Get comprehensive revenue analytics"""
+    days = int(period.replace('d', ''))
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y-%m-%d')
+    
+    # Get reservations for period
+    res_result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).gte('created_at', start_date).execute()
+    reservations = res_result.data
+    
+    # Get rooms
+    rooms_result = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).execute()
+    total_rooms = len(rooms_result.data)
+    
+    # Get room types
+    types_result = supabase.table('room_types').select('*').eq('hotel_id', hotel_id).execute()
+    room_types = {t['id']: t for t in types_result.data}
+    
+    # Calculate metrics
+    total_revenue = sum(float(r.get('total_amount') or 0) for r in reservations)
+    paid_reservations = [r for r in reservations if r.get('payment_status') == 'paid']
+    paid_revenue = sum(float(r.get('total_amount') or 0) for r in paid_reservations)
+    
+    # Calculate ADR (Average Daily Rate)
+    total_nights = sum(
+        (datetime.strptime(r['check_out_date'], '%Y-%m-%d') - datetime.strptime(r['check_in_date'], '%Y-%m-%d')).days
+        for r in reservations if r.get('check_in_date') and r.get('check_out_date')
+    )
+    adr = total_revenue / total_nights if total_nights > 0 else 0
+    
+    # Calculate RevPAR
+    available_room_nights = total_rooms * days
+    revpar = total_revenue / available_room_nights if available_room_nights > 0 else 0
+    
+    # Calculate occupancy
+    occupied_nights = total_nights
+    occupancy_rate = (occupied_nights / available_room_nights * 100) if available_room_nights > 0 else 0
+    
+    # Revenue by room type
+    revenue_by_type = {}
+    for r in reservations:
+        type_id = r.get('room_type_id')
+        type_name = room_types.get(type_id, {}).get('name', 'Outros')
+        revenue_by_type[type_name] = revenue_by_type.get(type_name, 0) + float(r.get('total_amount') or 0)
+    
+    # Daily revenue trend
+    daily_revenue = {}
+    for r in reservations:
+        date = r.get('created_at', '')[:10]
+        daily_revenue[date] = daily_revenue.get(date, 0) + float(r.get('total_amount') or 0)
+    
+    # Booking lead time analysis
+    lead_times = []
+    for r in reservations:
+        if r.get('created_at') and r.get('check_in_date'):
+            created = datetime.strptime(r['created_at'][:10], '%Y-%m-%d')
+            checkin = datetime.strptime(r['check_in_date'], '%Y-%m-%d')
+            lead_times.append((checkin - created).days)
+    avg_lead_time = sum(lead_times) / len(lead_times) if lead_times else 0
+    
+    return {
+        'period': period,
+        'total_revenue': total_revenue,
+        'paid_revenue': paid_revenue,
+        'pending_revenue': total_revenue - paid_revenue,
+        'total_reservations': len(reservations),
+        'adr': round(adr, 2),
+        'revpar': round(revpar, 2),
+        'occupancy_rate': round(occupancy_rate, 1),
+        'avg_lead_time_days': round(avg_lead_time, 1),
+        'revenue_by_room_type': revenue_by_type,
+        'daily_revenue': [{'date': k, 'revenue': v} for k, v in sorted(daily_revenue.items())],
+        'total_room_nights_sold': total_nights,
+        'available_room_nights': available_room_nights
+    }
+
+@api_router.get("/revenue/forecast")
+async def get_revenue_forecast(hotel_id: str, days: int = 30, current_user: dict = Depends(get_current_user)):
+    """Get revenue forecast based on confirmed reservations"""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    future_date = (datetime.now(timezone.utc) + timedelta(days=days)).strftime('%Y-%m-%d')
+    
+    # Get future reservations
+    res_result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).gte('check_in_date', today).lte('check_in_date', future_date).in_('status', ['confirmed', 'checked_in']).execute()
+    reservations = res_result.data
+    
+    # Get room types for pricing
+    types_result = supabase.table('room_types').select('*').eq('hotel_id', hotel_id).execute()
+    room_types = {t['id']: t for t in types_result.data}
+    
+    rooms_result = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).execute()
+    total_rooms = len(rooms_result.data)
+    
+    # Calculate forecast by day
+    forecast = []
+    for i in range(days):
+        date = (datetime.now(timezone.utc) + timedelta(days=i)).strftime('%Y-%m-%d')
+        day_reservations = [r for r in reservations if r['check_in_date'] <= date < r['check_out_date']]
+        
+        confirmed_revenue = sum(
+            float(r.get('total_amount') or 0) / max(1, (datetime.strptime(r['check_out_date'], '%Y-%m-%d') - datetime.strptime(r['check_in_date'], '%Y-%m-%d')).days)
+            for r in day_reservations
+        )
+        
+        occupancy = len(day_reservations) / total_rooms * 100 if total_rooms > 0 else 0
+        
+        forecast.append({
+            'date': date,
+            'confirmed_revenue': round(confirmed_revenue, 2),
+            'confirmed_rooms': len(day_reservations),
+            'available_rooms': total_rooms - len(day_reservations),
+            'occupancy': round(occupancy, 1)
+        })
+    
+    total_forecast = sum(f['confirmed_revenue'] for f in forecast)
+    avg_occupancy = sum(f['occupancy'] for f in forecast) / len(forecast) if forecast else 0
+    
+    return {
+        'period_days': days,
+        'total_forecast_revenue': round(total_forecast, 2),
+        'avg_forecast_occupancy': round(avg_occupancy, 1),
+        'daily_forecast': forecast
+    }
+
+@api_router.get("/revenue/pricing-suggestions")
+async def get_pricing_suggestions(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get dynamic pricing suggestions based on demand"""
+    # Get room types
+    types_result = supabase.table('room_types').select('*').eq('hotel_id', hotel_id).execute()
+    room_types = types_result.data
+    
+    # Get rooms
+    rooms_result = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).execute()
+    total_rooms = len(rooms_result.data)
+    
+    # Get next 14 days reservations
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    future = (datetime.now(timezone.utc) + timedelta(days=14)).strftime('%Y-%m-%d')
+    res_result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).gte('check_in_date', today).lte('check_in_date', future).execute()
+    reservations = res_result.data
+    
+    suggestions = []
+    for room_type in room_types:
+        base_price = float(room_type.get('base_price', 0))
+        
+        # Check demand for next 7 days
+        type_reservations = [r for r in reservations if r.get('room_type_id') == room_type['id']]
+        
+        # Simple demand-based pricing suggestion
+        if len(type_reservations) > 5:
+            demand_level = 'high'
+            suggested_adjustment = 15
+        elif len(type_reservations) > 2:
+            demand_level = 'medium'
+            suggested_adjustment = 5
+        else:
+            demand_level = 'low'
+            suggested_adjustment = -10
+        
+        suggested_price = base_price * (1 + suggested_adjustment / 100)
+        
+        suggestions.append({
+            'room_type_id': room_type['id'],
+            'room_type_name': room_type['name'],
+            'current_price': base_price,
+            'demand_level': demand_level,
+            'reservations_next_14d': len(type_reservations),
+            'suggested_adjustment_percent': suggested_adjustment,
+            'suggested_price': round(suggested_price, 2),
+            'potential_revenue_increase': round((suggested_price - base_price) * len(type_reservations), 2)
+        })
+    
+    return suggestions
+
 # ================== AI CHAT ROUTES ==================
 
 @api_router.post("/chat", response_model=ChatResponse)
