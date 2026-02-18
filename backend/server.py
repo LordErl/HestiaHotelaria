@@ -1724,6 +1724,332 @@ Seja educado, elegante e prestativo. Fale em português brasileiro."""
         logger.error(f"Guest Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro no chat: {str(e)}")
 
+# ================== MARKETPLACE ==================
+
+class CartItem(BaseModel):
+    product_id: str
+    quantity: int = 1
+    customization: Optional[dict] = None
+
+class CreateOrder(BaseModel):
+    shipping_address: dict
+    billing_address: Optional[dict] = None
+    payment_method: str = "pix"
+    notes: Optional[str] = None
+
+# Public Marketplace Routes
+@api_router.get("/marketplace/categories")
+async def get_marketplace_categories():
+    """Get all active marketplace categories"""
+    result = supabase.table('marketplace_categories').select('*').eq('is_active', True).order('display_order').execute()
+    return result.data
+
+@api_router.get("/marketplace/products")
+async def get_marketplace_products(category_id: Optional[str] = None, featured: bool = False, search: Optional[str] = None):
+    """Get marketplace products with filters"""
+    query = supabase.table('marketplace_products').select('*, marketplace_categories(name)').eq('is_active', True)
+    
+    if category_id:
+        query = query.eq('category_id', category_id)
+    if featured:
+        query = query.eq('is_featured', True)
+    
+    result = query.order('created_at', desc=True).execute()
+    products = result.data
+    
+    if search:
+        search_lower = search.lower()
+        products = [p for p in products if search_lower in p['name'].lower() or search_lower in (p.get('description') or '').lower()]
+    
+    return products
+
+@api_router.get("/marketplace/products/{product_id}")
+async def get_marketplace_product(product_id: str):
+    """Get single product details"""
+    result = supabase.table('marketplace_products').select('*, marketplace_categories(name)').eq('id', product_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    return result.data
+
+# Cart Routes (requires auth)
+@api_router.get("/marketplace/cart")
+async def get_cart(current_user: dict = Depends(get_current_user)):
+    """Get current user's cart"""
+    hotel_id = current_user.get('hotel_id')
+    if not hotel_id:
+        return []
+    
+    result = supabase.table('marketplace_cart').select('*, marketplace_products(*)').eq('hotel_id', hotel_id).execute()
+    
+    cart_items = []
+    for item in result.data:
+        product = item.get('marketplace_products', {})
+        cart_items.append({
+            'id': item['id'],
+            'product_id': item['product_id'],
+            'quantity': item['quantity'],
+            'customization': item.get('customization', {}),
+            'product': product,
+            'subtotal': item['quantity'] * float(product.get('price', 0))
+        })
+    
+    return cart_items
+
+@api_router.post("/marketplace/cart")
+async def add_to_cart(item: CartItem, current_user: dict = Depends(get_current_user)):
+    """Add item to cart"""
+    hotel_id = current_user.get('hotel_id')
+    if not hotel_id:
+        raise HTTPException(status_code=400, detail="Usuário sem hotel associado")
+    
+    # Check if product exists
+    product = supabase.table('marketplace_products').select('id,stock_quantity').eq('id', item.product_id).single().execute()
+    if not product.data:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    
+    if product.data['stock_quantity'] < item.quantity:
+        raise HTTPException(status_code=400, detail="Estoque insuficiente")
+    
+    # Check if already in cart
+    existing = supabase.table('marketplace_cart').select('id,quantity').eq('hotel_id', hotel_id).eq('product_id', item.product_id).execute()
+    
+    if existing.data:
+        # Update quantity
+        new_qty = existing.data[0]['quantity'] + item.quantity
+        supabase.table('marketplace_cart').update({'quantity': new_qty, 'customization': item.customization or {}, 'updated_at': datetime.now(timezone.utc).isoformat()}).eq('id', existing.data[0]['id']).execute()
+        return {"message": "Quantidade atualizada", "quantity": new_qty}
+    else:
+        # Add new item
+        cart_item = {
+            'id': str(uuid.uuid4()),
+            'hotel_id': hotel_id,
+            'product_id': item.product_id,
+            'quantity': item.quantity,
+            'customization': item.customization or {}
+        }
+        supabase.table('marketplace_cart').insert(cart_item).execute()
+        return {"message": "Produto adicionado ao carrinho", "id": cart_item['id']}
+
+@api_router.patch("/marketplace/cart/{item_id}")
+async def update_cart_item(item_id: str, quantity: int, current_user: dict = Depends(get_current_user)):
+    """Update cart item quantity"""
+    if quantity <= 0:
+        supabase.table('marketplace_cart').delete().eq('id', item_id).execute()
+        return {"message": "Item removido do carrinho"}
+    
+    supabase.table('marketplace_cart').update({'quantity': quantity, 'updated_at': datetime.now(timezone.utc).isoformat()}).eq('id', item_id).execute()
+    return {"message": "Quantidade atualizada"}
+
+@api_router.delete("/marketplace/cart/{item_id}")
+async def remove_from_cart(item_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove item from cart"""
+    supabase.table('marketplace_cart').delete().eq('id', item_id).execute()
+    return {"message": "Item removido"}
+
+@api_router.delete("/marketplace/cart")
+async def clear_cart(current_user: dict = Depends(get_current_user)):
+    """Clear entire cart"""
+    hotel_id = current_user.get('hotel_id')
+    if hotel_id:
+        supabase.table('marketplace_cart').delete().eq('hotel_id', hotel_id).execute()
+    return {"message": "Carrinho limpo"}
+
+# Orders
+@api_router.post("/marketplace/orders")
+async def create_order(order_data: CreateOrder, current_user: dict = Depends(get_current_user)):
+    """Create order from cart"""
+    hotel_id = current_user.get('hotel_id')
+    if not hotel_id:
+        raise HTTPException(status_code=400, detail="Usuário sem hotel associado")
+    
+    # Get cart items
+    cart_result = supabase.table('marketplace_cart').select('*, marketplace_products(*)').eq('hotel_id', hotel_id).execute()
+    if not cart_result.data:
+        raise HTTPException(status_code=400, detail="Carrinho vazio")
+    
+    # Calculate totals
+    subtotal = 0
+    customization_total = 0
+    order_items = []
+    
+    for cart_item in cart_result.data:
+        product = cart_item.get('marketplace_products', {})
+        item_subtotal = cart_item['quantity'] * float(product.get('price', 0))
+        
+        # Calculate customization cost
+        custom_price = 0
+        customization = cart_item.get('customization', {})
+        if customization and product.get('customization_available'):
+            options = product.get('customization_options', {})
+            for key in customization:
+                if key in options:
+                    custom_price += float(options[key].get('price', 0))
+        
+        subtotal += item_subtotal
+        customization_total += custom_price * cart_item['quantity']
+        
+        order_items.append({
+            'product_id': cart_item['product_id'],
+            'product_name': product.get('name'),
+            'product_sku': product.get('sku'),
+            'quantity': cart_item['quantity'],
+            'unit_price': float(product.get('price', 0)),
+            'subtotal': item_subtotal,
+            'customization': customization,
+            'customization_price': custom_price
+        })
+    
+    total_amount = subtotal + customization_total
+    
+    # Create order
+    order_id = str(uuid.uuid4())
+    order_number = f"MP{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:4].upper()}"
+    
+    order = {
+        'id': order_id,
+        'hotel_id': hotel_id,
+        'order_number': order_number,
+        'status': 'pending',
+        'subtotal': subtotal,
+        'customization_total': customization_total,
+        'shipping_cost': 0,
+        'discount': 0,
+        'total_amount': total_amount,
+        'shipping_address': order_data.shipping_address,
+        'billing_address': order_data.billing_address or order_data.shipping_address,
+        'payment_method': order_data.payment_method,
+        'notes': order_data.notes
+    }
+    
+    supabase.table('marketplace_orders').insert(order).execute()
+    
+    # Create order items
+    for item in order_items:
+        item['id'] = str(uuid.uuid4())
+        item['order_id'] = order_id
+        supabase.table('marketplace_order_items').insert(item).execute()
+    
+    # Clear cart
+    supabase.table('marketplace_cart').delete().eq('hotel_id', hotel_id).execute()
+    
+    # Update product stock
+    for item in order_items:
+        product = supabase.table('marketplace_products').select('stock_quantity').eq('id', item['product_id']).single().execute()
+        if product.data:
+            new_stock = max(0, product.data['stock_quantity'] - item['quantity'])
+            supabase.table('marketplace_products').update({'stock_quantity': new_stock}).eq('id', item['product_id']).execute()
+    
+    return {"message": "Pedido criado com sucesso", "order_id": order_id, "order_number": order_number, "total": total_amount}
+
+@api_router.get("/marketplace/orders")
+async def get_orders(current_user: dict = Depends(get_current_user)):
+    """Get orders for current hotel"""
+    hotel_id = current_user.get('hotel_id')
+    if not hotel_id:
+        return []
+    
+    result = supabase.table('marketplace_orders').select('*').eq('hotel_id', hotel_id).order('created_at', desc=True).execute()
+    return result.data
+
+@api_router.get("/marketplace/orders/{order_id}")
+async def get_order_details(order_id: str, current_user: dict = Depends(get_current_user)):
+    """Get order details with items"""
+    order = supabase.table('marketplace_orders').select('*').eq('id', order_id).single().execute()
+    if not order.data:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    items = supabase.table('marketplace_order_items').select('*').eq('order_id', order_id).execute()
+    
+    return {
+        **order.data,
+        'items': items.data
+    }
+
+# Admin Marketplace Routes
+@api_router.get("/admin/marketplace/orders")
+async def admin_get_all_orders(status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Admin: Get all marketplace orders"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    query = supabase.table('marketplace_orders').select('*, hotels(name)')
+    if status:
+        query = query.eq('status', status)
+    
+    result = query.order('created_at', desc=True).execute()
+    return result.data
+
+@api_router.patch("/admin/marketplace/orders/{order_id}/status")
+async def admin_update_order_status(order_id: str, status: str, tracking_code: Optional[str] = None, admin_notes: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Admin: Update order status"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    update_data = {'status': status, 'updated_at': datetime.now(timezone.utc).isoformat()}
+    
+    if status == 'confirmed':
+        update_data['confirmed_at'] = datetime.now(timezone.utc).isoformat()
+    elif status == 'shipped':
+        update_data['shipped_at'] = datetime.now(timezone.utc).isoformat()
+        if tracking_code:
+            update_data['tracking_code'] = tracking_code
+    elif status == 'delivered':
+        update_data['delivered_at'] = datetime.now(timezone.utc).isoformat()
+    
+    if admin_notes:
+        update_data['admin_notes'] = admin_notes
+    
+    supabase.table('marketplace_orders').update(update_data).eq('id', order_id).execute()
+    return {"message": f"Status atualizado para {status}"}
+
+@api_router.post("/admin/marketplace/products")
+async def admin_create_product(product: dict, current_user: dict = Depends(get_current_user)):
+    """Admin: Create new product"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    product['id'] = str(uuid.uuid4())
+    if not product.get('sku'):
+        product['sku'] = f"PROD{str(uuid.uuid4())[:8].upper()}"
+    
+    supabase.table('marketplace_products').insert(product).execute()
+    return {"message": "Produto criado", "id": product['id']}
+
+@api_router.patch("/admin/marketplace/products/{product_id}")
+async def admin_update_product(product_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    """Admin: Update product"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+    supabase.table('marketplace_products').update(updates).eq('id', product_id).execute()
+    return {"message": "Produto atualizado"}
+
+@api_router.get("/admin/marketplace/stats")
+async def admin_marketplace_stats(current_user: dict = Depends(get_current_user)):
+    """Admin: Get marketplace statistics"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    # Orders stats
+    orders = supabase.table('marketplace_orders').select('status,total_amount').execute()
+    total_orders = len(orders.data)
+    total_revenue = sum(float(o.get('total_amount', 0)) for o in orders.data)
+    pending_orders = len([o for o in orders.data if o['status'] == 'pending'])
+    
+    # Products stats
+    products = supabase.table('marketplace_products').select('id,stock_quantity,is_active').execute()
+    total_products = len(products.data)
+    low_stock = len([p for p in products.data if p['stock_quantity'] < 10])
+    
+    return {
+        'total_orders': total_orders,
+        'pending_orders': pending_orders,
+        'total_revenue': total_revenue,
+        'total_products': total_products,
+        'low_stock_products': low_stock
+    }
+
 # ================== ROOT ==================
 
 @api_router.get("/")
