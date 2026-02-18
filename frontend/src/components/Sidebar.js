@@ -25,7 +25,8 @@ import {
   Hotel,
   ClipboardList,
   Sparkles,
-  CreditCard
+  CreditCard,
+  TrendingUp
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -45,6 +46,7 @@ const Sidebar = () => {
     { to: '/guests', icon: Users, label: 'Hóspedes' },
     { to: '/check-in-out', icon: LogIn, label: 'Check-in/Out' },
     { to: '/housekeeping', icon: ClipboardList, label: 'Housekeeping' },
+    { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
     { to: '/chat', icon: MessageSquare, label: 'Assistente IA' },
     { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
   ];
