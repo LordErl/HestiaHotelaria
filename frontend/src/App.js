@@ -15,6 +15,7 @@ import BookingEnginePage from './pages/BookingEnginePage';
 import GuestPortalPage from './pages/GuestPortalPage';
 import PaymentSettingsPage from './pages/PaymentSettingsPage';
 import RevenueManagementPage from './pages/RevenueManagementPage';
+import MarketplacePage from './pages/MarketplacePage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/payment-settings" element={<PaymentSettingsPage />} />
         <Route path="/revenue" element={<RevenueManagementPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
