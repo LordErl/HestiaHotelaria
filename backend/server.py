@@ -2074,6 +2074,478 @@ async def admin_marketplace_stats(current_user: dict = Depends(get_current_user)
         'low_stock_products': low_stock
     }
 
+# ================== OTA INTEGRATIONS ==================
+
+class OTAChannelConfig(BaseModel):
+    channel_name: str
+    display_name: Optional[str] = None
+    api_username: Optional[str] = None
+    api_password: Optional[str] = None
+    api_key: Optional[str] = None
+    api_secret: Optional[str] = None
+    property_id: Optional[str] = None
+    commission_rate: float = 15.0
+    is_active: bool = False
+
+@api_router.get("/ota/channels/{hotel_id}")
+async def get_ota_channels(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get OTA channels for hotel"""
+    result = supabase.table('ota_channels').select('*').eq('hotel_id', hotel_id).execute()
+    
+    # Mask sensitive data
+    channels = []
+    for ch in result.data:
+        channel = {**ch}
+        for key in ['api_password', 'api_secret']:
+            if channel.get(key):
+                channel[key] = '****'
+        channels.append(channel)
+    
+    return channels
+
+@api_router.post("/ota/channels/{hotel_id}")
+async def create_update_ota_channel(hotel_id: str, config: OTAChannelConfig, current_user: dict = Depends(get_current_user)):
+    """Create or update OTA channel"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    existing = supabase.table('ota_channels').select('id').eq('hotel_id', hotel_id).eq('channel_name', config.channel_name).execute()
+    
+    channel_data = {
+        'hotel_id': hotel_id,
+        **config.model_dump(exclude_none=True),
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    if existing.data:
+        supabase.table('ota_channels').update(channel_data).eq('id', existing.data[0]['id']).execute()
+        return {"message": f"Canal {config.channel_name} atualizado"}
+    else:
+        channel_data['id'] = str(uuid.uuid4())
+        supabase.table('ota_channels').insert(channel_data).execute()
+        return {"message": f"Canal {config.channel_name} criado", "id": channel_data['id']}
+
+@api_router.post("/ota/channels/{hotel_id}/init")
+async def init_ota_channels(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Initialize default OTA channels"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    existing = supabase.table('ota_channels').select('id').eq('hotel_id', hotel_id).execute()
+    if existing.data:
+        return {"message": "Canais já inicializados", "count": len(existing.data)}
+    
+    default_channels = [
+        {'channel_name': 'booking', 'display_name': 'Booking.com', 'commission_rate': 15.0},
+        {'channel_name': 'expedia', 'display_name': 'Expedia', 'commission_rate': 18.0},
+        {'channel_name': 'airbnb', 'display_name': 'Airbnb', 'commission_rate': 3.0},
+        {'channel_name': 'decolar', 'display_name': 'Decolar', 'commission_rate': 12.0},
+    ]
+    
+    for ch in default_channels:
+        ch['id'] = str(uuid.uuid4())
+        ch['hotel_id'] = hotel_id
+        ch['is_active'] = False
+        supabase.table('ota_channels').insert(ch).execute()
+    
+    return {"message": "Canais inicializados", "count": len(default_channels)}
+
+@api_router.patch("/ota/channels/{channel_id}/toggle")
+async def toggle_ota_channel(channel_id: str, current_user: dict = Depends(get_current_user)):
+    """Toggle OTA channel active status"""
+    channel = supabase.table('ota_channels').select('is_active').eq('id', channel_id).single().execute()
+    if not channel.data:
+        raise HTTPException(status_code=404, detail="Canal não encontrado")
+    
+    new_status = not channel.data['is_active']
+    supabase.table('ota_channels').update({'is_active': new_status, 'updated_at': datetime.now(timezone.utc).isoformat()}).eq('id', channel_id).execute()
+    return {"message": f"Canal {'ativado' if new_status else 'desativado'}", "is_active": new_status}
+
+@api_router.post("/ota/channels/{channel_id}/sync")
+async def sync_ota_channel(channel_id: str, current_user: dict = Depends(get_current_user)):
+    """Trigger sync for OTA channel (placeholder - would call actual OTA APIs)"""
+    channel = supabase.table('ota_channels').select('*').eq('id', channel_id).single().execute()
+    if not channel.data:
+        raise HTTPException(status_code=404, detail="Canal não encontrado")
+    
+    # Update last sync (placeholder - real implementation would sync with OTA)
+    supabase.table('ota_channels').update({
+        'last_sync_at': datetime.now(timezone.utc).isoformat(),
+        'last_sync_status': 'success'
+    }).eq('id', channel_id).execute()
+    
+    return {"message": "Sincronização iniciada", "channel": channel.data['channel_name']}
+
+# ================== GESTÃO DE PESSOAS (RH) ==================
+
+class EmployeeCreate(BaseModel):
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    document_cpf: Optional[str] = None
+    department: str
+    position: str
+    hire_date: Optional[str] = None
+    contract_type: str = 'clt'
+    work_shift: str = 'manha'
+    base_salary: Optional[float] = None
+
+@api_router.get("/hr/employees")
+async def get_employees(hotel_id: str, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get employees list"""
+    query = supabase.table('employees').select('*').eq('hotel_id', hotel_id)
+    if status:
+        query = query.eq('status', status)
+    result = query.order('full_name').execute()
+    return result.data
+
+@api_router.get("/hr/employees/{employee_id}")
+async def get_employee(employee_id: str, current_user: dict = Depends(get_current_user)):
+    """Get employee details"""
+    result = supabase.table('employees').select('*').eq('id', employee_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+    return result.data
+
+@api_router.post("/hr/employees")
+async def create_employee(hotel_id: str, employee: EmployeeCreate, current_user: dict = Depends(get_current_user)):
+    """Create new employee"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    employee_id = str(uuid.uuid4())
+    employee_code = f"EMP{str(uuid.uuid4())[:6].upper()}"
+    
+    employee_data = {
+        'id': employee_id,
+        'hotel_id': hotel_id,
+        'employee_code': employee_code,
+        **employee.model_dump(exclude_none=True),
+        'status': 'active'
+    }
+    
+    supabase.table('employees').insert(employee_data).execute()
+    return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
+
+@api_router.patch("/hr/employees/{employee_id}")
+async def update_employee(employee_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    """Update employee"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+    supabase.table('employees').update(updates).eq('id', employee_id).execute()
+    return {"message": "Funcionário atualizado"}
+
+@api_router.get("/hr/schedules")
+async def get_work_schedules(hotel_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get work schedules"""
+    query = supabase.table('work_schedules').select('*, employees(full_name, department, position)').eq('hotel_id', hotel_id)
+    
+    if date_from:
+        query = query.gte('schedule_date', date_from)
+    if date_to:
+        query = query.lte('schedule_date', date_to)
+    
+    result = query.order('schedule_date').execute()
+    return result.data
+
+@api_router.post("/hr/schedules")
+async def create_schedule(schedule: dict, current_user: dict = Depends(get_current_user)):
+    """Create work schedule"""
+    schedule['id'] = str(uuid.uuid4())
+    supabase.table('work_schedules').insert(schedule).execute()
+    return {"message": "Escala criada", "id": schedule['id']}
+
+@api_router.get("/hr/leave-requests")
+async def get_leave_requests(hotel_id: str, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get leave requests"""
+    # Get employees from hotel first
+    employees = supabase.table('employees').select('id').eq('hotel_id', hotel_id).execute()
+    employee_ids = [e['id'] for e in employees.data]
+    
+    if not employee_ids:
+        return []
+    
+    query = supabase.table('leave_requests').select('*, employees(full_name, department)').in_('employee_id', employee_ids)
+    if status:
+        query = query.eq('status', status)
+    
+    result = query.order('created_at', desc=True).execute()
+    return result.data
+
+@api_router.post("/hr/leave-requests")
+async def create_leave_request(request: dict, current_user: dict = Depends(get_current_user)):
+    """Create leave request"""
+    request['id'] = str(uuid.uuid4())
+    request['status'] = 'pending'
+    
+    # Calculate days
+    if request.get('start_date') and request.get('end_date'):
+        start = datetime.strptime(request['start_date'], '%Y-%m-%d')
+        end = datetime.strptime(request['end_date'], '%Y-%m-%d')
+        request['total_days'] = (end - start).days + 1
+    
+    supabase.table('leave_requests').insert(request).execute()
+    return {"message": "Solicitação criada", "id": request['id']}
+
+@api_router.patch("/hr/leave-requests/{request_id}/approve")
+async def approve_leave_request(request_id: str, approved: bool, current_user: dict = Depends(get_current_user)):
+    """Approve or reject leave request"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    status = 'approved' if approved else 'rejected'
+    supabase.table('leave_requests').update({
+        'status': status,
+        'approved_by': current_user['id'],
+        'approved_at': datetime.now(timezone.utc).isoformat()
+    }).eq('id', request_id).execute()
+    
+    return {"message": f"Solicitação {status}"}
+
+@api_router.get("/hr/stats")
+async def get_hr_stats(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get HR statistics"""
+    employees = supabase.table('employees').select('status,department').eq('hotel_id', hotel_id).execute()
+    
+    total = len(employees.data)
+    active = len([e for e in employees.data if e['status'] == 'active'])
+    vacation = len([e for e in employees.data if e['status'] == 'vacation'])
+    
+    # Department breakdown
+    departments = {}
+    for e in employees.data:
+        dept = e.get('department', 'Outros')
+        departments[dept] = departments.get(dept, 0) + 1
+    
+    return {
+        'total_employees': total,
+        'active': active,
+        'on_vacation': vacation,
+        'on_leave': total - active - vacation,
+        'by_department': departments
+    }
+
+# ================== EVENTOS E SALAS ==================
+
+class EventSpaceCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    space_type: str
+    capacity_theater: Optional[int] = None
+    capacity_classroom: Optional[int] = None
+    capacity_banquet: Optional[int] = None
+    area_sqm: Optional[float] = None
+    hourly_rate: Optional[float] = None
+    half_day_rate: Optional[float] = None
+    full_day_rate: Optional[float] = None
+    amenities: List[str] = []
+    floor: Optional[str] = None
+
+class EventCreate(BaseModel):
+    space_id: str
+    event_name: str
+    event_type: str
+    event_date: str
+    start_time: str
+    end_time: str
+    expected_guests: int
+    room_setup: str
+    client_name: str
+    client_email: Optional[str] = None
+    client_phone: Optional[str] = None
+    special_requirements: Optional[str] = None
+
+@api_router.get("/events/spaces")
+async def get_event_spaces(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get event spaces"""
+    result = supabase.table('event_spaces').select('*').eq('hotel_id', hotel_id).eq('is_active', True).execute()
+    return result.data
+
+@api_router.post("/events/spaces")
+async def create_event_space(hotel_id: str, space: EventSpaceCreate, current_user: dict = Depends(get_current_user)):
+    """Create event space"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    space_id = str(uuid.uuid4())
+    space_data = {
+        'id': space_id,
+        'hotel_id': hotel_id,
+        **space.model_dump(exclude_none=True)
+    }
+    
+    supabase.table('event_spaces').insert(space_data).execute()
+    return {"message": "Espaço criado", "id": space_id}
+
+@api_router.get("/events/spaces/{space_id}/availability")
+async def check_space_availability(space_id: str, date: str, current_user: dict = Depends(get_current_user)):
+    """Check space availability for a date"""
+    events = supabase.table('events').select('start_time,end_time,event_name').eq('space_id', space_id).eq('event_date', date).neq('status', 'cancelled').execute()
+    
+    return {
+        'date': date,
+        'booked_slots': [{'start': e['start_time'], 'end': e['end_time'], 'event': e['event_name']} for e in events.data],
+        'is_available': len(events.data) == 0
+    }
+
+@api_router.get("/events/list")
+async def get_events(hotel_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get events list"""
+    query = supabase.table('events').select('*, event_spaces(name)').eq('hotel_id', hotel_id)
+    
+    if date_from:
+        query = query.gte('event_date', date_from)
+    if date_to:
+        query = query.lte('event_date', date_to)
+    if status:
+        query = query.eq('status', status)
+    
+    result = query.order('event_date').execute()
+    return result.data
+
+@api_router.post("/events")
+async def create_event(hotel_id: str, event: EventCreate, current_user: dict = Depends(get_current_user)):
+    """Create new event"""
+    event_id = str(uuid.uuid4())
+    
+    # Get space rates
+    space = supabase.table('event_spaces').select('full_day_rate,half_day_rate,hourly_rate').eq('id', event.space_id).single().execute()
+    space_rate = space.data.get('full_day_rate', 0) if space.data else 0
+    
+    event_data = {
+        'id': event_id,
+        'hotel_id': hotel_id,
+        **event.model_dump(exclude_none=True),
+        'space_rate': space_rate,
+        'total_amount': space_rate,
+        'status': 'inquiry'
+    }
+    
+    supabase.table('events').insert(event_data).execute()
+    return {"message": "Evento criado", "id": event_id}
+
+@api_router.patch("/events/{event_id}")
+async def update_event(event_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    """Update event"""
+    updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+    supabase.table('events').update(updates).eq('id', event_id).execute()
+    return {"message": "Evento atualizado"}
+
+@api_router.patch("/events/{event_id}/status")
+async def update_event_status(event_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    """Update event status"""
+    supabase.table('events').update({
+        'status': status,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }).eq('id', event_id).execute()
+    return {"message": f"Status atualizado para {status}"}
+
+@api_router.get("/events/stats")
+async def get_events_stats(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get events statistics"""
+    events = supabase.table('events').select('status,total_amount,event_type').eq('hotel_id', hotel_id).execute()
+    
+    total = len(events.data)
+    confirmed = len([e for e in events.data if e['status'] == 'confirmed'])
+    revenue = sum(float(e.get('total_amount') or 0) for e in events.data if e['status'] in ['confirmed', 'completed'])
+    
+    by_type = {}
+    for e in events.data:
+        t = e.get('event_type', 'Outros')
+        by_type[t] = by_type.get(t, 0) + 1
+    
+    return {
+        'total_events': total,
+        'confirmed': confirmed,
+        'pending': total - confirmed,
+        'total_revenue': revenue,
+        'by_type': by_type
+    }
+
+# ================== ASSINATURAS MARKETPLACE ==================
+
+@api_router.get("/subscriptions/plans")
+async def get_subscription_plans(current_user: dict = Depends(get_current_user)):
+    """Get available subscription plans"""
+    result = supabase.table('subscription_plans').select('*').eq('is_active', True).execute()
+    return result.data
+
+@api_router.post("/subscriptions/plans")
+async def create_subscription_plan(plan: dict, current_user: dict = Depends(get_current_user)):
+    """Create subscription plan (admin only)"""
+    if current_user['role'] not in ['admin', 'superadmin']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    plan['id'] = str(uuid.uuid4())
+    supabase.table('subscription_plans').insert(plan).execute()
+    return {"message": "Plano criado", "id": plan['id']}
+
+@api_router.get("/subscriptions")
+async def get_subscriptions(hotel_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get subscriptions"""
+    query = supabase.table('subscriptions').select('*, subscription_plans(*), hotels(name)')
+    
+    if hotel_id:
+        query = query.eq('hotel_id', hotel_id)
+    elif current_user['role'] not in ['admin', 'superadmin']:
+        # Regular users see only their hotel's subscriptions
+        if current_user.get('hotel_id'):
+            query = query.eq('hotel_id', current_user['hotel_id'])
+        else:
+            return []
+    
+    result = query.order('created_at', desc=True).execute()
+    return result.data
+
+@api_router.post("/subscriptions")
+async def create_subscription(subscription: dict, current_user: dict = Depends(get_current_user)):
+    """Create new subscription"""
+    hotel_id = subscription.get('hotel_id') or current_user.get('hotel_id')
+    if not hotel_id:
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
+    
+    sub_id = str(uuid.uuid4())
+    
+    # Get plan details
+    plan = supabase.table('subscription_plans').select('*').eq('id', subscription['plan_id']).single().execute()
+    
+    # Calculate next billing date based on cycle
+    cycle_days = {'weekly': 7, 'biweekly': 14, 'monthly': 30, 'quarterly': 90}
+    days = cycle_days.get(plan.data.get('billing_cycle', 'monthly'), 30)
+    next_billing = (datetime.now(timezone.utc) + timedelta(days=days)).strftime('%Y-%m-%d')
+    
+    sub_data = {
+        'id': sub_id,
+        'hotel_id': hotel_id,
+        'plan_id': subscription['plan_id'],
+        'status': 'active',
+        'start_date': datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        'next_billing_date': next_billing,
+        'shipping_address': subscription.get('shipping_address'),
+        'payment_method': subscription.get('payment_method', 'faturado')
+    }
+    
+    supabase.table('subscriptions').insert(sub_data).execute()
+    return {"message": "Assinatura criada", "id": sub_id}
+
+@api_router.patch("/subscriptions/{subscription_id}/status")
+async def update_subscription_status(subscription_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    """Update subscription status"""
+    update_data = {
+        'status': status,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    if status == 'cancelled':
+        update_data['cancelled_at'] = datetime.now(timezone.utc).isoformat()
+    
+    supabase.table('subscriptions').update(update_data).eq('id', subscription_id).execute()
+    return {"message": f"Assinatura {status}"}
+
 # ================== ROOT ==================
 
 @api_router.get("/")
