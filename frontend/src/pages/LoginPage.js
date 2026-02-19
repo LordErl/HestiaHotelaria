@@ -30,7 +30,9 @@ const LoginPage = () => {
     setIsLoading(true);
     
     const result = await login(loginEmail, loginPassword);
-    if (!result.success) {
+    if (result.success) {
+      navigate('/');
+    } else {
       setError(result.error);
     }
     setIsLoading(false);
