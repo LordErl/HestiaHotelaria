@@ -1725,30 +1725,6 @@ async def check_availability(hotel_id: str, check_in: str, check_out: str, adult
     
     return {"rooms": available_rooms, "room_types": room_types_result.data, "check_in": check_in, "check_out": check_out}
 
-@api_router.post("/public/reservations")
-async def create_public_reservation(data: PublicReservationCreate):
-    existing_guest = supabase.table('guests').select('id').eq('email', data.guest.email).eq('hotel_id', data.hotel_id).execute()
-    
-    if existing_guest.data:
-        guest_id = existing_guest.data[0]['id']
-    else:
-        guest_id = str(uuid.uuid4())
-        guest_dict = {'id': guest_id, 'hotel_id': data.hotel_id, 'name': data.guest.name, 'email': data.guest.email, 'phone': data.guest.phone, 'document_number': data.guest.document_number, 'notes': data.guest.special_requests}
-        supabase.table('guests').insert(guest_dict).execute()
-    
-    confirmation_code = 'HES' + str(uuid.uuid4())[:5].upper()
-    res_id = str(uuid.uuid4())
-    res_dict = {
-        'id': res_id, 'hotel_id': data.hotel_id, 'guest_id': guest_id, 'room_id': data.room_id, 'room_type_id': data.room_type_id,
-        'check_in_date': data.check_in_date, 'check_out_date': data.check_out_date, 'adults': data.adults, 'children': data.children,
-        'status': 'confirmed', 'total_amount': data.total_amount, 'payment_status': 'pending', 'payment_provider': data.payment_provider,
-        'confirmation_code': confirmation_code, 'source': 'booking_engine', 'notes': data.guest.special_requests
-    }
-    supabase.table('reservations').insert(res_dict).execute()
-    supabase.table('rooms').update({'status': 'blocked'}).eq('id', data.room_id).execute()
-    
-    return {"id": res_id, "confirmation_code": confirmation_code, "status": "confirmed", "message": "Reserva criada com sucesso"}
-
 @api_router.post("/guest-portal/login")
 async def guest_portal_login(credentials: GuestPortalLogin):
     res_result = supabase.table('reservations').select('*').eq('confirmation_code', credentials.confirmation_code.upper()).execute()
