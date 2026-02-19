@@ -2220,16 +2220,51 @@ async def create_employee(hotel_id: str, employee: EmployeeCreate, current_user:
     employee_id = str(uuid.uuid4())
     employee_code = f"EMP{str(uuid.uuid4())[:6].upper()}"
     
+    # Build employee data, excluding fields that may not exist in the database
+    employee_dict = employee.model_dump(exclude_none=True)
+    
+    # Core fields that should exist in most schemas
     employee_data = {
         'id': employee_id,
         'hotel_id': hotel_id,
         'employee_code': employee_code,
-        **employee.model_dump(exclude_none=True),
         'status': 'active'
     }
     
-    supabase.table('employees').insert(employee_data).execute()
-    return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
+    # Add fields from model, handling potential schema differences
+    field_mapping = {
+        'full_name': 'full_name',
+        'email': 'email',
+        'phone': 'phone',
+        'document_cpf': 'document_cpf',
+        'department': 'department',
+        'position': 'position',
+        'hire_date': 'hire_date',
+        'contract_type': 'contract_type',
+        'work_shift': 'work_shift',
+        'base_salary': 'base_salary'
+    }
+    
+    for model_field, db_field in field_mapping.items():
+        if model_field in employee_dict:
+            employee_data[db_field] = employee_dict[model_field]
+    
+    try:
+        supabase.table('employees').insert(employee_data).execute()
+        return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
+    except Exception as e:
+        error_msg = str(e)
+        # If column doesn't exist, try again without problematic fields
+        if 'base_salary' in error_msg:
+            employee_data.pop('base_salary', None)
+            try:
+                supabase.table('employees').insert(employee_data).execute()
+                return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
+            except Exception as e2:
+                logger.error(f"Error creating employee (retry): {e2}")
+                raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário: {str(e2)}")
+        logger.error(f"Error creating employee: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário: {str(e)}")
 
 @api_router.patch("/hr/employees/{employee_id}")
 async def update_employee(employee_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
