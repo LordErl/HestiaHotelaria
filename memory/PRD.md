@@ -16,7 +16,7 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 
 ---
 
-## What's Been Implemented
+## ✅ What's Been Implemented (100% Funcional)
 
 ### Onda 1: PMS Core & Front Desk ✅
 - Dashboard com KPIs em tempo real
@@ -27,59 +27,39 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - Assistentes IA (Hestia gestão + Jarbas hóspedes)
 
 ### Onda 2: Motor de Reservas + Portal do Hóspede ✅
-- Motor de Reservas público (/booking)
+- Motor de Reservas público (/booking) com pagamento integrado
 - Portal do Hóspede (/guest-portal)
 - APIs públicas de disponibilidade
 - Chat com Jarbas no portal
 
-### Migração para Supabase ✅
-- Backend migrado de MongoDB para Supabase PostgreSQL
-- Conexão via Supabase Python Client (REST API)
-- RLS policies configuradas
-
-### Onda 3: Integração de Pagamentos ✅ (18/02/2026)
-- **3 provedores implementados**: Stripe, Mercado Pago, CORA
-- **Painel administrativo** para gerenciar provedores (/payment-settings)
-- **Motor de Reservas com pagamento integrado**:
-  - Seleção de método de pagamento (PIX, Cartão)
-  - Checkout Stripe para cartão internacional
+### Onda 3: Integração de Pagamentos ✅
+- **3 provedores**: Stripe, Mercado Pago, CORA
+- **Painel administrativo** (/payment-settings)
+- **Checkout completo** no Motor de Reservas:
   - PIX Mercado Pago com QR Code em tempo real
-  - Polling de status de pagamento
-- **Webhooks** para confirmação automática
+  - Checkout Stripe para cartão internacional
+  - Polling automático de status
 
-### Onda 4: Notificações por Email ✅ (18/02/2026)
+### Onda 4: Notificações por Email ✅
 - Integração com Resend API
 - Email de confirmação de reserva (HTML responsivo)
 - Email de confirmação de pagamento
 - Templates com tema Royal Obsidian
 
-### Onda 5: Revenue Management ✅ (18/02/2026)
-- **Dashboard completo** com métricas:
-  - ADR (Average Daily Rate)
-  - RevPAR (Revenue per Available Room)
-  - Taxa de Ocupação
-  - Lead Time médio de reservas
-- **Gráficos interativos**:
-  - Evolução da receita diária
-  - Distribuição por tipo de quarto (Pie Chart)
-  - Previsão de receita (próximos 30 dias)
-- **Sugestões de precificação dinâmica** baseadas em demanda
-- Filtros por período (7d, 30d, 90d)
+### Onda 5: Revenue Management ✅
+- Dashboard com KPIs: ADR, RevPAR, Taxa de Ocupação
+- Gráficos: Receita diária, Receita por tipo de quarto
+- Previsão de receita (próximos 30 dias)
+- Sugestões de precificação dinâmica
 
-### Onda 6: Marketplace Hestia ✅ (18/02/2026) - BACKEND PRONTO
-- **Modelo de dados completo** para B2B marketplace
-- **APIs implementadas**:
-  - Categorias de produtos
-  - Catálogo de produtos com filtros
-  - Carrinho de compras
-  - Sistema de pedidos
-  - Admin para gerenciamento
-- **Frontend implementado** com:
-  - Grid de produtos com imagens
-  - Filtros por categoria
-  - Sidebar de carrinho
-  - Modal de detalhes do produto
-- ⚠️ **PENDENTE**: Executar script SQL `/app/backend/marketplace_schema.sql` no Supabase
+### Onda 6: Marketplace Hestia ✅ (COMPLETO)
+- **Catálogo completo** com 4 produtos e 6 categorias
+- **Carrinho de compras** funcional
+- **Checkout** com endereço de entrega
+- **Sistema de pedidos** com numeração automática
+- **Gestão de estoque** automática
+- Badges de desconto e destaque
+- Modal de detalhes do produto
 
 ---
 
@@ -116,39 +96,10 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 
 ---
 
-## API Endpoints Principais
-
-### Pagamentos
-| Endpoint | Método | Descrição |
-|----------|--------|-----------|
-| /api/payments/stripe/checkout | POST | Cria checkout Stripe |
-| /api/payments/mercadopago/pix | POST | Cria PIX Mercado Pago |
-| /api/payments/cora/pix | POST | Cria PIX CORA |
-| /api/webhook/stripe | POST | Webhook Stripe |
-| /api/webhook/mercadopago | POST | Webhook Mercado Pago |
-
-### Revenue Management
-| Endpoint | Método | Descrição |
-|----------|--------|-----------|
-| /api/revenue/analytics | GET | Métricas de receita |
-| /api/revenue/forecast | GET | Previsão de receita |
-| /api/revenue/pricing-suggestions | GET | Sugestões de preço |
-
-### Marketplace
-| Endpoint | Método | Descrição |
-|----------|--------|-----------|
-| /api/marketplace/categories | GET | Lista categorias |
-| /api/marketplace/products | GET | Lista produtos |
-| /api/marketplace/cart | GET/POST | Carrinho |
-| /api/marketplace/orders | GET/POST | Pedidos |
-
----
-
 ## Credentials
 
 - **Admin**: admin@hestia.com / admin123
 - **Hotel Demo**: Grand Hestia Palace
-- **Supabase Project**: kcwmyhklmkaadgnqedrr
 
 ### Chaves de Pagamento (no .env)
 - **Stripe**: sk_test_emergent (teste)
@@ -157,36 +108,38 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 
 ---
 
-## Pendências Imediatas (P0)
+## Produtos do Marketplace (Demo)
 
-### ⚠️ AÇÃO NECESSÁRIA: Executar SQL do Marketplace
-O script `/app/backend/marketplace_schema.sql` precisa ser executado no Supabase SQL Editor para criar:
-- `marketplace_categories` - Categorias de produtos
-- `marketplace_products` - Catálogo de produtos
-- `marketplace_orders` - Pedidos
-- `marketplace_order_items` - Itens dos pedidos
-- `marketplace_cart` - Carrinho de compras
-
----
-
-## Scripts SQL Pendentes
-
-1. `/app/backend/marketplace_schema.sql` - Marketplace Hestia
+| Produto | Preço | Preço Mercado | Desconto |
+|---------|-------|---------------|----------|
+| Kit Toalhas Premium 500g | R$ 189,90 | R$ 249,90 | -24% |
+| Kit Amenities Luxo 5 peças | R$ 12,90 | R$ 18,90 | -32% |
+| Roupão de Banho Felpudo | R$ 129,90 | R$ 179,90 | -28% |
+| Café Premium 500g | R$ 45,90 | R$ 59,90 | -23% |
 
 ---
 
 ## Future Backlog
 
-- Finalização do checkout do Marketplace
-- Módulo Financeiro & Estoque expandido
-- Housekeeping & Manutenção expandido
-- Distribuição & Vendas (OTAs)
+### P1 - Próximas Features
+- Adicionar mais produtos ao Marketplace
+- Página de histórico de pedidos
+- Admin: Gestão de produtos do Marketplace
+- Configurar Resend para emails reais
+
+### P2 - Módulos Adicionais
+- Financeiro & Estoque expandido
+- Integração com OTAs (Booking, Expedia)
 - Gestão de Pessoas
-- Segurança
-- ESG
-- Eventos
-- Sistema de Auditoria
+- Manutenção expandida
+- Eventos e Salas
+
+### P3 - Visão de Longo Prazo
+- App mobile para hóspedes
+- App mobile para staff
+- API pública para integrações
+- White-label para redes
 
 ---
 
-*Atualizado: 18/02/2026 - Pagamentos, Revenue Management e Marketplace implementados*
+*Atualizado: 18/02/2026 - Marketplace Hestia 100% funcional*
