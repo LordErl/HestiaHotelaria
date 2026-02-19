@@ -22,6 +22,10 @@ import OtaIntegrationPage from './pages/OtaIntegrationPage';
 import HrManagementPage from './pages/HrManagementPage';
 import EventsManagementPage from './pages/EventsManagementPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
+import LoyaltyPage from './pages/LoyaltyPage';
+import ReportsPage from './pages/ReportsPage';
+import MobileGuestPage from './pages/MobileGuestPage';
+import MobileStaffPage from './pages/MobileStaffPage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
@@ -70,6 +74,10 @@ function AppRoutes() {
         <Route path="/hr" element={<HrManagementPage />} />
         <Route path="/events" element={<EventsManagementPage />} />
         <Route path="/subscriptions" element={<SubscriptionsPage />} />
+        <Route path="/loyalty" element={<LoyaltyPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/mobile-guest" element={<MobileGuestPage />} />
+        <Route path="/mobile-staff" element={<MobileStaffPage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />

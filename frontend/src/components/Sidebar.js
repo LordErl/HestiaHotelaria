@@ -33,7 +33,10 @@ import {
   Globe,
   UserCog,
   PartyPopper,
-  RefreshCw
+  RefreshCw,
+  Star,
+  BarChart3,
+  Smartphone
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -61,7 +64,11 @@ const Sidebar = () => {
     { to: '/hr', icon: UserCog, label: 'RH' },
     { to: '/events', icon: PartyPopper, label: 'Eventos' },
     { to: '/subscriptions', icon: RefreshCw, label: 'Assinaturas' },
+    { to: '/loyalty', icon: Star, label: 'Fidelidade' },
+    { to: '/reports', icon: BarChart3, label: 'Relatórios' },
     { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
+    { to: '/mobile-guest', icon: Smartphone, label: 'App Hóspede' },
+    { to: '/mobile-staff', icon: Smartphone, label: 'App Staff' },
     { to: '/marketplace-admin', icon: Settings2, label: 'Admin MP' },
   ];
 
