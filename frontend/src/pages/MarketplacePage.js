@@ -417,6 +417,7 @@ const MarketplacePage = () => {
                     </div>
                     
                     <Button 
+                      onClick={() => { setShowCart(false); setShowCheckout(true); }}
                       className="w-full bg-[#D4AF37] hover:bg-[#C5A028] text-[#0a1929] py-6"
                       data-testid="checkout-btn"
                     >
@@ -428,6 +429,186 @@ const MarketplacePage = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-[#0f2744] border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => { setShowCheckout(false); setShowCart(true); }}>
+                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                </Button>
+                <CardTitle className="text-white">Finalizar Pedido</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Order Summary */}
+              <div className="bg-[#0a1929]/50 p-4 rounded-lg">
+                <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-[#D4AF37]" />
+                  Resumo do Pedido
+                </h4>
+                <div className="space-y-2">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span className="text-gray-400">{item.product?.name} x{item.quantity}</span>
+                      <span className="text-white">{formatCurrency(item.subtotal)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-gray-700 pt-2 mt-2 flex justify-between font-semibold">
+                    <span className="text-white">Total</span>
+                    <span className="text-[#D4AF37]">{formatCurrency(cartTotal)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shipping Address */}
+              <div>
+                <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#D4AF37]" />
+                  Endereço de Entrega
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label className="text-gray-400">Rua/Avenida *</Label>
+                    <Input
+                      value={shippingAddress.street}
+                      onChange={(e) => setShippingAddress({...shippingAddress, street: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                      placeholder="Nome da rua"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Número</Label>
+                    <Input
+                      value={shippingAddress.number}
+                      onChange={(e) => setShippingAddress({...shippingAddress, number: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                      placeholder="123"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Complemento</Label>
+                    <Input
+                      value={shippingAddress.complement}
+                      onChange={(e) => setShippingAddress({...shippingAddress, complement: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                      placeholder="Apto, sala..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Bairro</Label>
+                    <Input
+                      value={shippingAddress.neighborhood}
+                      onChange={(e) => setShippingAddress({...shippingAddress, neighborhood: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">CEP</Label>
+                    <Input
+                      value={shippingAddress.zip}
+                      onChange={(e) => setShippingAddress({...shippingAddress, zip: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                      placeholder="00000-000"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Cidade *</Label>
+                    <Input
+                      value={shippingAddress.city}
+                      onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Estado *</Label>
+                    <Input
+                      value={shippingAddress.state}
+                      onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
+                      className="bg-[#0a1929] border-gray-700 text-white"
+                      placeholder="SP"
+                      maxLength={2}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="font-semibold">Pagamento Faturado</span>
+                </div>
+                <p className="text-gray-400 text-sm mt-2">
+                  O valor será adicionado à sua fatura mensal da Hestia.
+                </p>
+              </div>
+
+              {/* Submit */}
+              <Button 
+                onClick={createOrder}
+                disabled={processingOrder}
+                className="w-full bg-[#D4AF37] hover:bg-[#C5A028] text-[#0a1929] py-6"
+                data-testid="confirm-order-btn"
+              >
+                {processingOrder ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando...</>
+                ) : (
+                  <>Confirmar Pedido - {formatCurrency(cartTotal)}</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Order Complete Modal */}
+      {orderComplete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-[#0f2744] border-gray-700 max-w-md w-full text-center">
+            <CardContent className="p-8 space-y-6">
+              <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-emerald-400" />
+              </div>
+              
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Pedido Confirmado!</h2>
+                <p className="text-gray-400">Seu pedido foi recebido com sucesso</p>
+              </div>
+              
+              <div className="bg-[#0a1929]/50 p-4 rounded-lg">
+                <p className="text-sm text-gray-400 mb-1">Número do Pedido</p>
+                <p className="text-xl font-bold text-[#D4AF37]">{orderComplete.order_number}</p>
+              </div>
+              
+              <div className="text-left bg-[#0a1929]/50 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Total</span>
+                  <span className="text-white font-semibold">{formatCurrency(orderComplete.total)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Pagamento</span>
+                  <span className="text-emerald-400">Faturado</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 text-amber-400 text-sm">
+                <Truck className="w-4 h-4" />
+                <span>Entrega estimada: 5-10 dias úteis</span>
+              </div>
+              
+              <Button 
+                onClick={() => setOrderComplete(null)}
+                className="w-full bg-[#D4AF37] hover:bg-[#C5A028] text-[#0a1929]"
+              >
+                Continuar Comprando
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 
