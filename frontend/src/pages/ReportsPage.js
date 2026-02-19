@@ -192,10 +192,25 @@ const ReportsPage = () => {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" className="border-white/10 text-[#F8FAFC]">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
+          <Select onValueChange={(value) => {
+            const [type, format] = value.split('-');
+            exportReport(type, format);
+          }}>
+            <SelectTrigger className="w-44 bg-[#0B1120] border-white/10 text-[#F8FAFC]">
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                {exporting ? 'Exportando...' : 'Exportar'}
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-[#151E32] border-white/10">
+              <SelectItem value="overview-csv">Resumo (CSV)</SelectItem>
+              <SelectItem value="overview-json">Resumo (JSON)</SelectItem>
+              <SelectItem value="revenue-csv">Receita (CSV)</SelectItem>
+              <SelectItem value="revenue-json">Receita (JSON)</SelectItem>
+              <SelectItem value="occupancy-csv">Ocupação (CSV)</SelectItem>
+              <SelectItem value="channels-csv">Canais (CSV)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
