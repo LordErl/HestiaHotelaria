@@ -118,13 +118,19 @@ class TestSubscriptions:
         })
         assert response.status_code == 200
         
-        subscription = response.json()
-        assert "id" in subscription
-        assert subscription["plan_id"] == plan_id
-        assert subscription["status"] == "active"
+        result = response.json()
+        assert "id" in result
+        assert "message" in result
+        assert result["message"] == "Assinatura criada"
         
-        # Store for cleanup
-        return subscription["id"]
+        # Verify subscription was created by fetching it
+        subs_response = requests.get(f"{BASE_URL}/api/subscriptions", headers=auth_headers)
+        subscriptions = subs_response.json()
+        created_sub = next((s for s in subscriptions if s["id"] == result["id"]), None)
+        assert created_sub is not None
+        assert created_sub["status"] == "active"
+        
+        return result["id"]
     
     def test_update_subscription_status_pause(self, auth_headers, plan_id):
         """Test PATCH /api/subscriptions/{id}/status - pause subscription"""
@@ -144,9 +150,17 @@ class TestSubscriptions:
         )
         assert response.status_code == 200
         
-        # Verify status changed
-        updated = response.json()
-        assert updated["status"] == "paused"
+        # Verify response message
+        result = response.json()
+        assert "message" in result
+        assert "paused" in result["message"]
+        
+        # Verify status changed by fetching subscriptions
+        subs_response = requests.get(f"{BASE_URL}/api/subscriptions", headers=auth_headers)
+        subscriptions = subs_response.json()
+        updated_sub = next((s for s in subscriptions if s["id"] == subscription_id), None)
+        assert updated_sub is not None
+        assert updated_sub["status"] == "paused"
     
     def test_update_subscription_status_cancel(self, auth_headers, plan_id):
         """Test PATCH /api/subscriptions/{id}/status - cancel subscription"""
@@ -166,9 +180,17 @@ class TestSubscriptions:
         )
         assert response.status_code == 200
         
-        # Verify status changed
-        updated = response.json()
-        assert updated["status"] == "cancelled"
+        # Verify response message
+        result = response.json()
+        assert "message" in result
+        assert "cancelled" in result["message"]
+        
+        # Verify status changed by fetching subscriptions
+        subs_response = requests.get(f"{BASE_URL}/api/subscriptions", headers=auth_headers)
+        subscriptions = subs_response.json()
+        updated_sub = next((s for s in subscriptions if s["id"] == subscription_id), None)
+        assert updated_sub is not None
+        assert updated_sub["status"] == "cancelled"
 
 
 class TestOTAIntegration:
