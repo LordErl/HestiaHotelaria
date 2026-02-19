@@ -2193,11 +2193,15 @@ class EmployeeCreate(BaseModel):
 @api_router.get("/hr/employees")
 async def get_employees(hotel_id: str, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get employees list"""
-    query = supabase.table('employees').select('*').eq('hotel_id', hotel_id)
-    if status:
-        query = query.eq('status', status)
-    result = query.order('full_name').execute()
-    return result.data
+    try:
+        query = supabase.table('employees').select('*').eq('hotel_id', hotel_id)
+        if status:
+            query = query.eq('status', status)
+        result = query.execute()
+        return result.data
+    except Exception as e:
+        logger.warning(f"Error fetching employees: {e}")
+        return []
 
 @api_router.get("/hr/employees/{employee_id}")
 async def get_employee(employee_id: str, current_user: dict = Depends(get_current_user)):
@@ -2240,15 +2244,19 @@ async def update_employee(employee_id: str, updates: dict, current_user: dict = 
 @api_router.get("/hr/schedules")
 async def get_work_schedules(hotel_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get work schedules"""
-    query = supabase.table('work_schedules').select('*, employees(full_name, department, position)').eq('hotel_id', hotel_id)
-    
-    if date_from:
-        query = query.gte('schedule_date', date_from)
-    if date_to:
-        query = query.lte('schedule_date', date_to)
-    
-    result = query.order('schedule_date').execute()
-    return result.data
+    try:
+        query = supabase.table('work_schedules').select('*').eq('hotel_id', hotel_id)
+        
+        if date_from:
+            query = query.gte('schedule_date', date_from)
+        if date_to:
+            query = query.lte('schedule_date', date_to)
+        
+        result = query.order('schedule_date').execute()
+        return result.data
+    except Exception as e:
+        logger.warning(f"Error fetching schedules: {e}")
+        return []
 
 @api_router.post("/hr/schedules")
 async def create_schedule(schedule: dict, current_user: dict = Depends(get_current_user)):
@@ -2260,19 +2268,23 @@ async def create_schedule(schedule: dict, current_user: dict = Depends(get_curre
 @api_router.get("/hr/leave-requests")
 async def get_leave_requests(hotel_id: str, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get leave requests"""
-    # Get employees from hotel first
-    employees = supabase.table('employees').select('id').eq('hotel_id', hotel_id).execute()
-    employee_ids = [e['id'] for e in employees.data]
-    
-    if not employee_ids:
+    try:
+        # Get employees from hotel first
+        employees = supabase.table('employees').select('id').eq('hotel_id', hotel_id).execute()
+        employee_ids = [e['id'] for e in employees.data]
+        
+        if not employee_ids:
+            return []
+        
+        query = supabase.table('leave_requests').select('*').in_('employee_id', employee_ids)
+        if status:
+            query = query.eq('status', status)
+        
+        result = query.order('created_at', desc=True).execute()
+        return result.data
+    except Exception as e:
+        logger.warning(f"Error fetching leave requests: {e}")
         return []
-    
-    query = supabase.table('leave_requests').select('*, employees(full_name, department)').in_('employee_id', employee_ids)
-    if status:
-        query = query.eq('status', status)
-    
-    result = query.order('created_at', desc=True).execute()
-    return result.data
 
 @api_router.post("/hr/leave-requests")
 async def create_leave_request(request: dict, current_user: dict = Depends(get_current_user)):
@@ -2307,25 +2319,52 @@ async def approve_leave_request(request_id: str, approved: bool, current_user: d
 @api_router.get("/hr/stats")
 async def get_hr_stats(hotel_id: str, current_user: dict = Depends(get_current_user)):
     """Get HR statistics"""
-    employees = supabase.table('employees').select('status,department').eq('hotel_id', hotel_id).execute()
-    
-    total = len(employees.data)
-    active = len([e for e in employees.data if e['status'] == 'active'])
-    vacation = len([e for e in employees.data if e['status'] == 'vacation'])
-    
-    # Department breakdown
-    departments = {}
-    for e in employees.data:
-        dept = e.get('department', 'Outros')
-        departments[dept] = departments.get(dept, 0) + 1
-    
-    return {
-        'total_employees': total,
-        'active': active,
-        'on_vacation': vacation,
-        'on_leave': total - active - vacation,
-        'by_department': departments
-    }
+    try:
+        employees = supabase.table('employees').select('*').eq('hotel_id', hotel_id).execute()
+        
+        total = len(employees.data)
+        active = len([e for e in employees.data if e.get('status') == 'active'])
+        vacation = len([e for e in employees.data if e.get('status') == 'vacation'])
+        
+        # Department breakdown
+        departments = {}
+        for e in employees.data:
+            dept = e.get('department') or e.get('department_id') or 'Outros'
+            departments[dept] = departments.get(dept, 0) + 1
+        
+        # Calculate monthly payroll
+        total_payroll = sum(float(e.get('base_salary') or 0) for e in employees.data if e.get('status') == 'active')
+        
+        # Get pending leave requests count
+        employee_ids = [e['id'] for e in employees.data]
+        pending_leaves = 0
+        if employee_ids:
+            try:
+                leaves = supabase.table('leave_requests').select('id').in_('employee_id', employee_ids).eq('status', 'pending').execute()
+                pending_leaves = len(leaves.data)
+            except:
+                pass
+        
+        return {
+            'total_employees': total,
+            'active_employees': active,
+            'on_vacation': vacation,
+            'on_leave': total - active - vacation,
+            'pending_leave_requests': pending_leaves,
+            'total_monthly_payroll': total_payroll,
+            'by_department': departments
+        }
+    except Exception as e:
+        logger.warning(f"Error fetching HR stats: {e}")
+        return {
+            'total_employees': 0,
+            'active_employees': 0,
+            'on_vacation': 0,
+            'on_leave': 0,
+            'pending_leave_requests': 0,
+            'total_monthly_payroll': 0,
+            'by_department': {}
+        }
 
 # ================== EVENTOS E SALAS ==================
 
