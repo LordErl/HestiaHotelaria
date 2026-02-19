@@ -54,7 +54,9 @@ const LoginPage = () => {
     
     setIsLoading(true);
     const result = await register(regName, regEmail, regPassword, 'admin');
-    if (!result.success) {
+    if (result.success) {
+      navigate('/');
+    } else {
       setError(result.error);
     }
     setIsLoading(false);
