@@ -680,6 +680,89 @@ def get_payment_confirmation_html(reservation: dict, payment: dict, hotel: dict)
     </html>
     """
 
+def get_marketplace_order_confirmation_html(order: dict, items: list, hotel_name: str, user_email: str) -> str:
+    """Generate HTML for marketplace order confirmation email"""
+    items_html = ""
+    for item in items:
+        items_html += f"""
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #1E3A5F;">{item.get('product_name', 'Produto')}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #1E3A5F; text-align: center;">{item.get('quantity', 1)}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #1E3A5F; text-align: right;">R$ {item.get('unit_price', 0):,.2f}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #1E3A5F; text-align: right;">R$ {item.get('subtotal', 0):,.2f}</td>
+        </tr>
+        """
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0B1120; color: #F8FAFC; margin: 0; padding: 40px; }}
+            .container {{ max-width: 600px; margin: 0 auto; background-color: #151E32; border-radius: 16px; overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; }}
+            .header h1 {{ color: #0B1120; margin: 0; font-size: 24px; }}
+            .content {{ padding: 30px; }}
+            .order-number {{ font-size: 28px; font-weight: bold; color: #D4AF37; text-align: center; margin: 20px 0; padding: 15px; background-color: #0B1120; border-radius: 8px; }}
+            table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+            th {{ background-color: #0B1120; color: #94A3B8; padding: 12px; text-align: left; font-weight: 500; }}
+            .total-row {{ background-color: #0B1120; }}
+            .total-row td {{ padding: 15px; font-size: 18px; font-weight: bold; }}
+            .footer {{ text-align: center; padding: 20px; color: #94A3B8; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🛒 Pedido Confirmado - Marketplace Hestia</h1>
+            </div>
+            <div class="content">
+                <p>Olá!</p>
+                <p>Seu pedido no <strong>Marketplace Hestia</strong> foi confirmado com sucesso.</p>
+                
+                <div class="order-number">
+                    #{order.get('order_number', '')}
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th style="text-align: center;">Qtd</th>
+                            <th style="text-align: right;">Preço Unit.</th>
+                            <th style="text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items_html}
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="3" style="text-align: right; color: #94A3B8;">Total:</td>
+                            <td style="text-align: right; color: #D4AF37;">R$ {order.get('total_amount', 0):,.2f}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <p style="margin-top: 20px; color: #94A3B8;">
+                    <strong>Hotel:</strong> {hotel_name}<br>
+                    <strong>Status:</strong> {order.get('status', 'Pendente').title()}<br>
+                    <strong>Método de Pagamento:</strong> {order.get('payment_method', 'N/A').upper()}
+                </p>
+                
+                <p style="margin-top: 30px;">
+                    Você pode acompanhar o status do seu pedido na página de <strong>Meus Pedidos</strong>.
+                </p>
+            </div>
+            <div class="footer">
+                <p>© 2024 Hestia Hotel Management - Marketplace</p>
+                <p>Este é um email automático, não responda.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
 # Update reservation creation to send email
 @api_router.post("/public/reservations")
 async def create_public_reservation(data: dict):
