@@ -5,7 +5,7 @@
 
 ## ✅ Status Atual - Dezembro 2025
 
-### Módulos Implementados e Funcionais
+### Módulos Implementados e Funcionais (100%)
 
 | Módulo | Status | Descrição |
 |--------|--------|-----------|
@@ -23,42 +23,46 @@
 | **Gestão de RH** | ✅ | Funcionários, escalas, férias |
 | **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
 | **Assinaturas** | ✅ | Planos recorrentes no Marketplace |
+| **Programa de Fidelidade** | ✅ | 4 tiers, pontos, recompensas |
+| **Relatórios Avançados** | ✅ | KPIs, receita, ocupação, hóspedes, canais |
+| **App Mobile Hóspede** | ✅ | Dashboard, serviços, solicitações |
+| **App Mobile Staff** | ✅ | Tarefas, solicitações, alertas |
 
 ---
 
 ## Implementações Recentes (19/02/2026)
 
-### Assinaturas Recorrentes no Marketplace
-- **Status**: ✅ Funcional
-- **Página**: `/subscriptions`
-- **Funcionalidades**:
-  - 4 planos disponíveis com preços diferenciados
-  - Ciclos: semanal, quinzenal, mensal, trimestral
-  - Benefícios: frete grátis, entrega prioritária
-  - Criar, pausar, reativar e cancelar assinaturas
-  - Dashboard com estatísticas
+### Programa de Fidelidade (`/loyalty`)
+- **4 Tiers**: Bronze (1x), Silver (1.25x), Gold (1.5x), Platinum (2x)
+- **5 Recompensas**: Diária Grátis (2500pts), Upgrade (1000pts), Spa (800pts), Jantar (1200pts), Transfer (500pts)
+- Gestão de membros e pontos
+- Dashboard com estatísticas
 
-### Planos de Assinatura Criados
-| Plano | Preço | Ciclo | Desconto |
-|-------|-------|-------|----------|
-| Kit Amenities Básico | R$ 349,90 | Mensal | 22% |
-| Kit Amenities Premium | R$ 899,90 | Mensal | 25% |
-| Enxoval Essencial | R$ 2.499,90 | Trimestral | 22% |
-| Frigobar Reposição | R$ 189,90 | Semanal | 24% |
+### Relatórios Avançados (`/reports`)
+- **KPIs**: Receita, Ocupação, ADR, RevPAR, Reservas
+- **4 Relatórios**: Receita, Ocupação, Hóspedes, Canais
+- Gráficos interativos com Recharts
+- Filtro por período (semana, mês, trimestre, ano)
+- Análise de canais de distribuição com comissões
 
-### Sincronização OTA Melhorada
-- **Status**: ✅ Funcional (simulada)
-- **Funcionalidades**:
-  - Sincronização manual por canal
-  - Estatísticas por canal (comissão, reservas)
-  - Logs de sincronização
-  - Ativação/desativação de canais
+### App Mobile Hóspede (`/mobile-guest`)
+- Dashboard personalizado com informações do quarto
+- Pontos de fidelidade
+- 6 serviços: Room Service, Spa, Concierge, Transporte, Lavanderia, Manutenção
+- Ações rápidas: Chat, Ver Conta, Late Check-out
+- Sistema de solicitações
 
-**Nota**: A sincronização retorna dados simulados. Em produção, seria necessário integrar com as APIs reais das OTAs (Booking.com API, Expedia Partner API, etc.)
+### App Mobile Staff (`/mobile-staff`)
+- Dashboard com estatísticas do dia
+- Check-ins e Check-outs do dia
+- Lista de tarefas pendentes
+- Solicitações de hóspedes
+- Sistema de alertas
+- Botões de ação para iniciar/concluir tarefas
 
 ---
 
-## URLs da Aplicação
+## URLs da Aplicação (24 páginas)
 
 | Rota | Descrição |
 |------|-----------|
@@ -81,6 +85,10 @@
 | /hr | Gestão de Pessoas (RH) |
 | /events | Gestão de Eventos & Salas |
 | /subscriptions | Assinaturas Recorrentes |
+| /loyalty | Programa de Fidelidade |
+| /reports | Relatórios Avançados |
+| /mobile-guest | App Mobile Hóspede |
+| /mobile-staff | App Mobile Staff |
 
 ---
 
@@ -105,34 +113,29 @@
 
 ## Testes Realizados
 
-### Iteration 6 - Backend (100% - 10/10 testes)
-- ✅ Login e autenticação
-- ✅ GET /api/subscriptions/plans (4 planos)
-- ✅ POST /api/subscriptions (criar assinatura)
-- ✅ GET /api/subscriptions (listar)
-- ✅ PATCH /api/subscriptions/{id}/status (pausar/cancelar)
-- ✅ GET /api/ota/channels (4 canais)
-- ✅ GET /api/ota/stats (estatísticas)
-- ✅ POST /api/ota/channels/{id}/sync (sincronização)
-- ✅ POST /api/public/reservations + email
+### Iteration 7 - Backend + Frontend
+- **Backend**: 16/16 testes passaram (100%)
+- **Frontend**: 4/4 novas páginas funcionando (100%)
 
-### Frontend
-- ✅ Página de Assinaturas funcional
-- ✅ Página de OTAs funcional
+### Features Verificadas
+- Loyalty: Config, Stats, Members, Add Points, Redeem
+- Reports: Overview, Revenue, Occupancy, Guests, Channels
+- Mobile Guest: Dashboard, Services, Requests
+- Mobile Staff: Dashboard, Tasks, Requests, Alerts
 
 ---
 
 ## Próximos Passos
 
-### P1 - Próximas Features
-- Integrar pagamentos reais nas assinaturas (cobrança automática)
+### P1 - Aprimoramentos
+- Integrar cobrança automática nas assinaturas (Stripe recurring)
 - Conectar APIs reais das OTAs para sincronização
+- PWA (Progressive Web App) para instalação no celular
 
-### P2 - Módulos Futuros
-- App mobile para hóspedes (React Native)
-- App mobile para staff
-- Programa de fidelidade
-- Relatórios avançados
+### P2 - Melhorias
+- Notificações push para mobile apps
+- Dashboard em tempo real com WebSockets
+- Exportação de relatórios para PDF/Excel
 
 ---
 
@@ -148,39 +151,13 @@
 
 ---
 
-## Arquitetura de Arquivos
-
-```
-/app/
-├── backend/
-│   ├── server.py                       # Monólito FastAPI
-│   ├── tests/
-│   │   ├── test_hestia_modules.py
-│   │   └── test_subscriptions_ota.py
-│   ├── advanced_modules_schema.sql
-│   ├── marketplace_schema.sql
-│   └── requirements.txt
-└── frontend/
-    └── src/
-        ├── components/
-        │   ├── ui/                      # Shadcn components
-        │   └── Sidebar.js
-        └── pages/
-            ├── SubscriptionsPage.js     # NOVO
-            ├── OtaIntegrationPage.js
-            ├── HrManagementPage.js
-            ├── EventsManagementPage.js
-            └── ... (outras páginas)
-```
-
----
-
 ## APIs Mockadas/Simuladas
 
 | API | Status | Descrição |
 |-----|--------|-----------|
-| OTA Sync | MOCKED | Retorna dados simulados, não conecta às APIs reais |
-| CORA PIX | MOCKED | Requer certificados mTLS para produção |
+| OTA Sync | MOCKED | Retorna dados simulados |
+| Reports Data | MOCKED | Gera dados aleatórios para demo |
+| Mobile Guest | MOCKED | Dados de hóspede simulados |
 
 ---
 
