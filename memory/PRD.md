@@ -135,15 +135,21 @@
 
 ## Próximos Passos
 
-### P1 - Aprimoramentos
-- Integrar cobrança automática nas assinaturas (Stripe recurring)
-- Conectar APIs reais das OTAs para sincronização
-- PWA (Progressive Web App) para instalação no celular
+### P0 - Clarificação Necessária
+- **App Mobile React Native**: O usuário solicitou "React Native" para os apps mobile, mas foram criadas páginas web responsivas. Confirmar se deseja:
+  - a) Seguir com PWA (Progressive Web App) usando o código existente
+  - b) Criar projeto separado em React Native nativo
+
+### P1 - Integrações Reais
+- Sincronização real com APIs de OTAs (Booking.com, Expedia) - atualmente MOCKED
+- Cobrança automática recorrente nas assinaturas (Stripe Billing)
+- Integração real com CORA (requer certificados mTLS)
 
 ### P2 - Melhorias
 - Notificações push para mobile apps
 - Dashboard em tempo real com WebSockets
 - Exportação de relatórios para PDF/Excel
+- Dados de demonstração para Programa de Fidelidade (atualmente 0 membros)
 
 ---
 
