@@ -24,6 +24,12 @@ const MarketplacePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCart, setShowCart] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [processingOrder, setProcessingOrder] = useState(false);
+  const [orderComplete, setOrderComplete] = useState(null);
+  const [shippingAddress, setShippingAddress] = useState({
+    street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip: ''
+  });
 
   useEffect(() => {
     fetchCategories();
