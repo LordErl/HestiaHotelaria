@@ -121,6 +121,16 @@
 
 ## Testes Realizados
 
+### Iteration 9 - Backend + Frontend New Features (19/02/2026)
+- **Backend**: 10/10 testes passaram (100%)
+- **Features Validadas**:
+  - OTA test connection (POST /api/ota/channels/{id}/test)
+  - OTA sync real (POST /api/ota/channels/{id}/sync-real)
+  - Reports export JSON/CSV (GET /api/reports/export/{hotel_id})
+  - Loyalty demo data (POST /api/loyalty/demo-data/{hotel_id})
+  - Billing plans (GET /api/billing/plans)
+- **Frontend**: Botões de teste OTA, dropdown de exportação em Reports
+
 ### Iteration 8 - Frontend Testing (19/02/2026)
 - **Frontend**: 100% (Todas as 3 páginas carregam e funcionam corretamente)
 - **Páginas Testadas**: Loyalty, Reports, Booking Engine
