@@ -124,6 +124,7 @@ const ReportsPage = () => {
           a.click();
           window.URL.revokeObjectURL(url);
           a.remove();
+          toast.success('Relatório exportado com sucesso');
         } else {
           const data = await response.json();
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -135,10 +136,14 @@ const ReportsPage = () => {
           a.click();
           window.URL.revokeObjectURL(url);
           a.remove();
+          toast.success('Relatório exportado com sucesso');
         }
+      } else {
+        toast.error('Erro ao exportar relatório');
       }
     } catch (error) {
       console.error('Erro ao exportar:', error);
+      toast.error('Erro ao exportar relatório');
     } finally {
       setExporting(false);
     }
