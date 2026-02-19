@@ -3,76 +3,22 @@
 
 ---
 
-## Original Problem Statement
-Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orientada a dados. Funciona como um verdadeiro sistema operacional do hotel ou grupo hoteleiro, indo muito além de um PMS tradicional.
+## ✅ Status Atual - 100% Funcional
 
-### Pilares Fundamentais
-- **Data-Driven**: Todos os módulos produzem, consomem e cruzam dados para gerar insights acionáveis
-- **Hóspede no centro**: Experiências personalizadas, fluidas e elegantes
-- **Operação simplificada**: Automação de tarefas e interfaces intuitivas
-- **Escalabilidade**: Arquitetura modular, multi-hotel, multi-marca e API-first
-- **Sustentabilidade integrada**: Ferramentas de gestão ESG
-- **Confiabilidade**: Sistema pensado para uso intenso diário
+### Módulos Implementados
 
----
-
-## ✅ What's Been Implemented (100% Funcional)
-
-### Onda 1: PMS Core & Front Desk ✅
-- Dashboard com KPIs em tempo real
-- Gestão de Reservas completa
-- Mapa de Quartos interativo
-- Check-in/Check-out digital
-- Housekeeping com fila de tarefas
-- Assistentes IA (Hestia gestão + Jarbas hóspedes)
-
-### Onda 2: Motor de Reservas + Portal do Hóspede ✅
-- Motor de Reservas público (/booking) com pagamento integrado
-- Portal do Hóspede (/guest-portal)
-- APIs públicas de disponibilidade
-- Chat com Jarbas no portal
-
-### Onda 3: Integração de Pagamentos ✅
-- **3 provedores**: Stripe, Mercado Pago, CORA
-- **Painel administrativo** (/payment-settings)
-- **Checkout completo** no Motor de Reservas:
-  - PIX Mercado Pago com QR Code em tempo real
-  - Checkout Stripe para cartão internacional
-  - Polling automático de status
-
-### Onda 4: Notificações por Email ✅
-- Integração com Resend API
-- Email de confirmação de reserva (HTML responsivo)
-- Email de confirmação de pagamento
-- Templates com tema Royal Obsidian
-
-### Onda 5: Revenue Management ✅
-- Dashboard com KPIs: ADR, RevPAR, Taxa de Ocupação
-- Gráficos: Receita diária, Receita por tipo de quarto
-- Previsão de receita (próximos 30 dias)
-- Sugestões de precificação dinâmica
-
-### Onda 6: Marketplace Hestia ✅ (COMPLETO)
-- **Catálogo completo** com 4 produtos e 6 categorias
-- **Carrinho de compras** funcional
-- **Checkout** com endereço de entrega
-- **Sistema de pedidos** com numeração automática
-- **Gestão de estoque** automática
-- Badges de desconto e destaque
-- Modal de detalhes do produto
-
----
-
-## Technical Stack
-
-- **Backend**: FastAPI + Supabase Python Client
-- **Database**: Supabase PostgreSQL
-- **Frontend**: React 19 + Tailwind CSS + Shadcn UI
-- **AI**: Gemini 3 Flash via emergentintegrations
-- **Payments**: Stripe, Mercado Pago SDK, CORA API
-- **Email**: Resend API
-- **Charts**: Recharts
-- **Design**: Royal Obsidian (dourado #D4AF37 + navy #0B1120)
+| Módulo | Status | Descrição |
+|--------|--------|-----------|
+| **PMS Core** | ✅ | Dashboard, Quartos, Reservas, Check-in/Out |
+| **Housekeeping** | ✅ | Gestão de tarefas de limpeza |
+| **Motor de Reservas** | ✅ | Booking público com pagamento integrado |
+| **Portal do Hóspede** | ✅ | Acesso por código, chat com IA |
+| **Pagamentos** | ✅ | Stripe, Mercado Pago PIX, CORA |
+| **Revenue Management** | ✅ | KPIs, gráficos, previsão, precificação dinâmica |
+| **Marketplace** | ✅ | Catálogo, carrinho, checkout, pedidos |
+| **Histórico de Pedidos** | ✅ | Página de pedidos para hotéis |
+| **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
+| **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
 
 ---
 
@@ -89,10 +35,59 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 | /housekeeping | Tarefas de limpeza |
 | /revenue | Revenue Management |
 | /marketplace | Marketplace Hestia |
+| /orders | Histórico de Pedidos |
+| /marketplace-admin | Admin do Marketplace |
 | /chat | Chat com IA |
 | /payment-settings | Configurações de Pagamento |
 | /booking | Motor de Reservas (público) |
 | /guest-portal | Portal do Hóspede |
+
+---
+
+## Produtos no Marketplace
+
+### Atuais (4 produtos)
+- Kit Toalhas Premium 500g - R$ 189,90
+- Kit Amenities Luxo 5 peças - R$ 12,90
+- Roupão de Banho Felpudo - R$ 129,90
+- Café Premium 500g - R$ 45,90
+
+### Novos (script pendente - /app/backend/marketplace_produtos_adicionais.sql)
+**Enxoval:**
+- Jogo de Lençol Percal 400 fios Casal - R$ 279,90
+- Jogo de Lençol Percal 400 fios Queen - R$ 329,90
+- Travesseiro Pluma de Ganso - R$ 189,90
+- Edredom Pluma Sintética King - R$ 459,90
+- Chinelo Descartável Spa (Par) - R$ 4,90
+
+**Amenities:**
+- Kit Amenities Premium 8 peças - R$ 24,90
+- Sabonete em Barra 30g (Cx 100un) - R$ 89,90
+- Shampoo Profissional 5L - R$ 79,90
+- Kit Dental Hóspede (Cx 200un) - R$ 159,90
+
+**Equipamentos:**
+- Frigobar 46L Silencioso - R$ 1.289,90
+- Cofre Eletrônico Compact 23L - R$ 459,90
+- Secador de Cabelo Parede 1600W - R$ 189,90
+- Chaleira Elétrica Inox 1L - R$ 129,90
+- Smart TV 43" 4K Hotel Mode - R$ 1.899,90
+
+**Decoração:**
+- Cortina Blackout 2,80x1,80m - R$ 189,90
+- Quadro Decorativo Abstrato 60x80 - R$ 149,90
+- Vaso Cerâmica Decorativo 25cm - R$ 79,90
+
+**Alimentos & Bebidas:**
+- Kit Chás Premium 60 sachês - R$ 89,90
+- Água Mineral 500ml (Fardo 12un) - R$ 18,90
+- Mix Nuts Premium 50g (Cx 30un) - R$ 179,90
+- Chocolate Belga 25g (Cx 50un) - R$ 149,90
+
+**Serviços:**
+- Serviço de Lavanderia Mensal - R$ 2.899,90
+- Consultoria Revenue Management - R$ 3.500,00
+- Treinamento Equipe Recepção - R$ 4.200,00
 
 ---
 
@@ -101,45 +96,59 @@ Hestia é uma plataforma completa de gestão hoteleira moderna, premium e orient
 - **Admin**: admin@hestia.com / admin123
 - **Hotel Demo**: Grand Hestia Palace
 
-### Chaves de Pagamento (no .env)
+### Integrações
 - **Stripe**: sk_test_emergent (teste)
-- **Mercado Pago**: APP_USR-4419048675246744-... (produção)
-- **CORA**: int-5PTFg75sSxJfcIYUFgQWqe (produção)
+- **Mercado Pago**: Configurado (produção)
+- **CORA**: Configurado (requer certificados mTLS)
+- **Resend**: RESEND_API_KEY vazio - precisa de chave real
+- **Gemini**: Configurado
 
 ---
 
-## Produtos do Marketplace (Demo)
+## Pendências
 
-| Produto | Preço | Preço Mercado | Desconto |
-|---------|-------|---------------|----------|
-| Kit Toalhas Premium 500g | R$ 189,90 | R$ 249,90 | -24% |
-| Kit Amenities Luxo 5 peças | R$ 12,90 | R$ 18,90 | -32% |
-| Roupão de Banho Felpudo | R$ 129,90 | R$ 179,90 | -28% |
-| Café Premium 500g | R$ 45,90 | R$ 59,90 | -23% |
+### ⚠️ Ação Necessária
+1. **Executar script SQL de produtos adicionais**:
+   `/app/backend/marketplace_produtos_adicionais.sql`
+
+2. **Configurar Resend para emails reais**:
+   - Criar conta em https://resend.com
+   - Adicionar chave em `RESEND_API_KEY` no .env
+   - Verificar domínio para envio
+
+---
+
+## Tech Stack
+
+- **Backend**: FastAPI + Supabase Python Client
+- **Database**: Supabase PostgreSQL
+- **Frontend**: React 19 + Tailwind CSS + Shadcn UI
+- **AI**: Gemini 3 Flash
+- **Payments**: Stripe, Mercado Pago, CORA
+- **Email**: Resend (pendente configuração)
+- **Charts**: Recharts
 
 ---
 
 ## Future Backlog
 
 ### P1 - Próximas Features
-- Adicionar mais produtos ao Marketplace
-- Página de histórico de pedidos
-- Admin: Gestão de produtos do Marketplace
-- Configurar Resend para emails reais
+- Integração com OTAs (Booking, Expedia)
+- Assinaturas recorrentes no Marketplace
+- Programa de fidelidade
 
 ### P2 - Módulos Adicionais
-- Financeiro & Estoque expandido
-- Integração com OTAs (Booking, Expedia)
-- Gestão de Pessoas
-- Manutenção expandida
+- Gestão de Pessoas (RH)
+- Manutenção preventiva
 - Eventos e Salas
+- ESG
 
 ### P3 - Visão de Longo Prazo
 - App mobile para hóspedes
 - App mobile para staff
-- API pública para integrações
-- White-label para redes
+- API pública
+- White-label
 
 ---
 
-*Atualizado: 18/02/2026 - Marketplace Hestia 100% funcional*
+*Atualizado: 19/02/2026*
