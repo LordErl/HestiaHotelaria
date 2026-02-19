@@ -116,6 +116,20 @@ const OtaIntegrationPage = () => {
     }
   };
 
+  const loadSyncLogs = async (channelId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/ota/channels/${channelId}/logs?limit=20`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSyncLogs(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar logs:', error);
+    }
+  };
+
   const initializeChannels = async () => {
     try {
       const response = await fetch(`${API_URL}/api/ota/channels/${hotelId}/init`, {
@@ -152,11 +166,40 @@ const OtaIntegrationPage = () => {
     }
   };
 
-  const syncChannel = async (channelId) => {
+  const testConnection = async (channelId) => {
+    setTesting(prev => ({ ...prev, [channelId]: true }));
+    
+    try {
+      const response = await fetch(`${API_URL}/api/ota/channels/${channelId}/test`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(data.message || 'Conexão estabelecida com sucesso!');
+      } else {
+        toast.error(data.error || 'Falha ao conectar');
+      }
+      
+      loadChannels();
+    } catch (error) {
+      toast.error('Erro ao testar conexão');
+    } finally {
+      setTesting(prev => ({ ...prev, [channelId]: false }));
+    }
+  };
+
+  const syncChannel = async (channelId, useRealSync = false) => {
     setSyncing(prev => ({ ...prev, [channelId]: true }));
     
     try {
-      const response = await fetch(`${API_URL}/api/ota/channels/${channelId}/sync`, {
+      const endpoint = useRealSync 
+        ? `${API_URL}/api/ota/channels/${channelId}/sync-real`
+        : `${API_URL}/api/ota/channels/${channelId}/sync`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -164,8 +207,8 @@ const OtaIntegrationPage = () => {
       const data = await response.json();
       
       if (response.ok) {
-        toast.success(data.message || 'Sincronização iniciada');
-        setTimeout(loadChannels, 2000);
+        toast.success(data.message || 'Sincronização concluída');
+        setTimeout(loadChannels, 1000);
       } else {
         toast.error(data.detail || 'Erro na sincronização');
       }
