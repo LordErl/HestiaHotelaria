@@ -27,7 +27,9 @@ import {
   Sparkles,
   CreditCard,
   TrendingUp,
-  ShoppingBag
+  ShoppingBag,
+  Package,
+  Settings2
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -49,8 +51,10 @@ const Sidebar = () => {
     { to: '/housekeeping', icon: ClipboardList, label: 'Housekeeping' },
     { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
     { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
+    { to: '/orders', icon: Package, label: 'Meus Pedidos' },
     { to: '/chat', icon: MessageSquare, label: 'Assistente IA' },
     { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
+    { to: '/marketplace-admin', icon: Settings2, label: 'Admin MP' },
   ];
 
   return (
