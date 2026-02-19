@@ -2220,51 +2220,64 @@ async def create_employee(hotel_id: str, employee: EmployeeCreate, current_user:
     employee_id = str(uuid.uuid4())
     employee_code = f"EMP{str(uuid.uuid4())[:6].upper()}"
     
-    # Build employee data, excluding fields that may not exist in the database
+    # Build employee data with minimal required fields first
     employee_dict = employee.model_dump(exclude_none=True)
     
-    # Core fields that should exist in most schemas
+    # Start with minimal core fields
     employee_data = {
         'id': employee_id,
         'hotel_id': hotel_id,
-        'employee_code': employee_code,
         'status': 'active'
     }
     
-    # Add fields from model, handling potential schema differences
-    field_mapping = {
-        'full_name': 'full_name',
-        'email': 'email',
-        'phone': 'phone',
-        'document_cpf': 'document_cpf',
-        'department': 'department',
-        'position': 'position',
-        'hire_date': 'hire_date',
-        'contract_type': 'contract_type',
-        'work_shift': 'work_shift',
-        'base_salary': 'base_salary'
-    }
+    # All possible fields to try
+    all_fields = [
+        'full_name', 'email', 'phone', 'document_cpf', 'department', 
+        'position', 'hire_date', 'contract_type', 'work_shift', 
+        'base_salary', 'employee_code'
+    ]
     
-    for model_field, db_field in field_mapping.items():
-        if model_field in employee_dict:
-            employee_data[db_field] = employee_dict[model_field]
+    # Add employee_code
+    employee_data['employee_code'] = employee_code
     
+    # Add all fields from the model
+    for field in all_fields:
+        if field in employee_dict:
+            employee_data[field] = employee_dict[field]
+    
+    # Try to insert with all fields first
     try:
         supabase.table('employees').insert(employee_data).execute()
         return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
     except Exception as e:
         error_msg = str(e)
-        # If column doesn't exist, try again without problematic fields
-        if 'base_salary' in error_msg:
-            employee_data.pop('base_salary', None)
-            try:
-                supabase.table('employees').insert(employee_data).execute()
-                return {"message": "Funcionário criado", "id": employee_id, "code": employee_code}
-            except Exception as e2:
-                logger.error(f"Error creating employee (retry): {e2}")
-                raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário: {str(e2)}")
-        logger.error(f"Error creating employee: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário: {str(e)}")
+        logger.warning(f"First insert attempt failed: {error_msg}")
+        
+        # If error mentions a specific column, try removing fields one by one
+        fields_to_try_remove = ['base_salary', 'contract_type', 'work_shift', 'hire_date', 'employee_code']
+        
+        for field_to_remove in fields_to_try_remove:
+            if field_to_remove in error_msg.lower() or 'column' in error_msg.lower():
+                employee_data.pop(field_to_remove, None)
+        
+        # Retry with minimal fields
+        try:
+            # Keep only basic fields
+            minimal_data = {
+                'id': employee_id,
+                'hotel_id': hotel_id,
+                'status': 'active'
+            }
+            # Add only fields that are likely to exist
+            for field in ['full_name', 'email', 'phone', 'department', 'position']:
+                if field in employee_dict:
+                    minimal_data[field] = employee_dict[field]
+            
+            supabase.table('employees').insert(minimal_data).execute()
+            return {"message": "Funcionário criado (campos limitados)", "id": employee_id, "code": employee_code}
+        except Exception as e2:
+            logger.error(f"Error creating employee (retry): {e2}")
+            raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário. A tabela 'employees' pode não existir ou ter um schema incompatível. Execute o script advanced_modules_schema.sql no Supabase.")
 
 @api_router.patch("/hr/employees/{employee_id}")
 async def update_employee(employee_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
