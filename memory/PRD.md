@@ -3,9 +3,9 @@
 
 ---
 
-## ✅ Status Atual - 100% Funcional
+## ✅ Status Atual - Dezembro 2025
 
-### Módulos Implementados
+### Módulos Implementados e Funcionais
 
 | Módulo | Status | Descrição |
 |--------|--------|-----------|
@@ -19,6 +19,9 @@
 | **Histórico de Pedidos** | ✅ | Página de pedidos para hotéis |
 | **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
 | **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
+| **Integração OTAs** | ✅ | Booking, Expedia, Airbnb, Decolar (configuração) |
+| **Eventos & Salas** | ✅ | Espaços para eventos, agendamento |
+| **Gestão de RH** | ⚠️ | Frontend pronto, schema DB precisa ajuste |
 
 ---
 
@@ -41,80 +44,90 @@
 | /payment-settings | Configurações de Pagamento |
 | /booking | Motor de Reservas (público) |
 | /guest-portal | Portal do Hóspede |
+| /ota-integration | Integração com OTAs |
+| /hr | Gestão de Pessoas (RH) |
+| /events | Gestão de Eventos & Salas |
 
 ---
 
-## Produtos no Marketplace
+## Novos Módulos (Dezembro 2025)
 
-### Atuais (4 produtos)
-- Kit Toalhas Premium 500g - R$ 189,90
-- Kit Amenities Luxo 5 peças - R$ 12,90
-- Roupão de Banho Felpudo - R$ 129,90
-- Café Premium 500g - R$ 45,90
+### 1. Integração OTAs (/ota-integration)
+- **Status**: ✅ Funcional
+- **Canais Suportados**: Booking.com, Expedia, Airbnb, Decolar
+- **Funcionalidades**:
+  - Visualizar e gerenciar canais OTA
+  - Ativar/desativar canais
+  - Configurar credenciais de API
+  - Sincronização de inventário e tarifas
+  - Dashboard com estatísticas de canais
 
-### Novos (script pendente - /app/backend/marketplace_produtos_adicionais.sql)
-**Enxoval:**
-- Jogo de Lençol Percal 400 fios Casal - R$ 279,90
-- Jogo de Lençol Percal 400 fios Queen - R$ 329,90
-- Travesseiro Pluma de Ganso - R$ 189,90
-- Edredom Pluma Sintética King - R$ 459,90
-- Chinelo Descartável Spa (Par) - R$ 4,90
+### 2. Gestão de Eventos (/events)
+- **Status**: ✅ Funcional
+- **Funcionalidades**:
+  - Cadastro de espaços (salas de reunião, auditórios, salões)
+  - Capacidades por tipo de layout (teatro, banquete, coquetel)
+  - Precificação (hora, meio período, dia inteiro)
+  - Agendamento de eventos
+  - Dados do cliente/contratante
+  - Status do evento (consulta, tentativo, confirmado)
+  - Dashboard com estatísticas
 
-**Amenities:**
-- Kit Amenities Premium 8 peças - R$ 24,90
-- Sabonete em Barra 30g (Cx 100un) - R$ 89,90
-- Shampoo Profissional 5L - R$ 79,90
-- Kit Dental Hóspede (Cx 200un) - R$ 159,90
-
-**Equipamentos:**
-- Frigobar 46L Silencioso - R$ 1.289,90
-- Cofre Eletrônico Compact 23L - R$ 459,90
-- Secador de Cabelo Parede 1600W - R$ 189,90
-- Chaleira Elétrica Inox 1L - R$ 129,90
-- Smart TV 43" 4K Hotel Mode - R$ 1.899,90
-
-**Decoração:**
-- Cortina Blackout 2,80x1,80m - R$ 189,90
-- Quadro Decorativo Abstrato 60x80 - R$ 149,90
-- Vaso Cerâmica Decorativo 25cm - R$ 79,90
-
-**Alimentos & Bebidas:**
-- Kit Chás Premium 60 sachês - R$ 89,90
-- Água Mineral 500ml (Fardo 12un) - R$ 18,90
-- Mix Nuts Premium 50g (Cx 30un) - R$ 179,90
-- Chocolate Belga 25g (Cx 50un) - R$ 149,90
-
-**Serviços:**
-- Serviço de Lavanderia Mensal - R$ 2.899,90
-- Consultoria Revenue Management - R$ 3.500,00
-- Treinamento Equipe Recepção - R$ 4.200,00
+### 3. Gestão de RH (/hr)
+- **Status**: ⚠️ Frontend pronto, Backend precisa de ajuste no schema
+- **Funcionalidades Planejadas**:
+  - Cadastro de funcionários
+  - Controle de escalas
+  - Solicitações de férias/afastamentos
+  - Dashboard com estatísticas de RH
+- **Pendência**: A tabela `employees` no Supabase tem schema diferente do esperado. 
+  - Solução: Executar o script `/app/backend/advanced_modules_schema.sql` para criar/atualizar as tabelas
 
 ---
 
-## Credentials
+## Credentials de Teste
 
 - **Admin**: admin@hestia.com / admin123
 - **Hotel Demo**: Grand Hestia Palace
+- **Hotel ID**: 480f0940-81a5-4ca7-806d-77ed790c740a
 
-### Integrações
-- **Stripe**: sk_test_emergent (teste)
-- **Mercado Pago**: Configurado (produção)
-- **CORA**: Configurado (requer certificados mTLS)
-- **Resend**: RESEND_API_KEY vazio - precisa de chave real
-- **Gemini**: Configurado
+### Integrações Configuradas
+
+| Serviço | Status | Notas |
+|---------|--------|-------|
+| Supabase | ✅ | Banco de dados PostgreSQL |
+| Stripe | ✅ | Pagamentos com cartão (teste) |
+| Mercado Pago | ✅ | PIX e cartão |
+| CORA | ⚠️ | PIX (requer certificados mTLS) |
+| Resend | ⚠️ | Email (chave configurada, envio pendente) |
+| Gemini | ✅ | IA para assistentes |
 
 ---
 
-## Pendências
+## Pendências e Próximos Passos
 
-### ⚠️ Ação Necessária
-1. **Executar script SQL de produtos adicionais**:
-   `/app/backend/marketplace_produtos_adicionais.sql`
+### ⚠️ Ação Necessária do Usuário
 
-2. **Configurar Resend para emails reais**:
-   - Criar conta em https://resend.com
-   - Adicionar chave em `RESEND_API_KEY` no .env
-   - Verificar domínio para envio
+1. **Corrigir tabela employees no Supabase**:
+   - A tabela `employees` existe mas com schema incompatível
+   - Executar DROP TABLE e depois o script `/app/backend/advanced_modules_schema.sql`
+   - Ou alterar manualmente a tabela para adicionar as colunas necessárias
+
+2. **Popular produtos do Marketplace**:
+   - Executar `/app/backend/marketplace_produtos_adicionais.sql`
+
+### P1 - Próximas Features
+- Implementar envio de emails via Resend (confirmação de reserva, pedidos)
+- Integrar pagamentos ao Motor de Reservas
+- Completar lógica de sincronização OTA
+- Assinaturas recorrentes no Marketplace
+
+### P2 - Módulos Futuros
+- App mobile para hóspedes
+- App mobile para staff
+- Manutenção preventiva
+- Programa de fidelidade
+- ESG
 
 ---
 
@@ -125,29 +138,50 @@
 - **Frontend**: React 19 + Tailwind CSS + Shadcn UI
 - **AI**: Gemini 3 Flash
 - **Payments**: Stripe, Mercado Pago, CORA
-- **Email**: Resend (pendente configuração)
+- **Email**: Resend
 - **Charts**: Recharts
 
 ---
 
-## Future Backlog
+## Arquitetura de Arquivos
 
-### P1 - Próximas Features
-- Integração com OTAs (Booking, Expedia)
-- Assinaturas recorrentes no Marketplace
-- Programa de fidelidade
-
-### P2 - Módulos Adicionais
-- Gestão de Pessoas (RH)
-- Manutenção preventiva
-- Eventos e Salas
-- ESG
-
-### P3 - Visão de Longo Prazo
-- App mobile para hóspedes
-- App mobile para staff
-- API pública
-- White-label
+```
+/app/
+├── backend/
+│   ├── server.py                       # Monólito FastAPI
+│   ├── advanced_modules_schema.sql     # Schema para OTAs, RH, Eventos
+│   ├── marketplace_schema.sql          # Schema Marketplace
+│   ├── marketplace_produtos_adicionais.sql
+│   ├── payment_schema.sql
+│   ├── schema.sql
+│   └── requirements.txt
+└── frontend/
+    └── src/
+        ├── components/
+        │   ├── ui/                      # Shadcn components
+        │   ├── Layout.js
+        │   └── Sidebar.js
+        ├── context/
+        │   └── AuthContext.js
+        └── pages/
+            ├── DashboardPage.js
+            ├── ReservationsPage.js
+            ├── RoomsPage.js
+            ├── GuestsPage.js
+            ├── CheckInOutPage.js
+            ├── HousekeepingPage.js
+            ├── ChatPage.js
+            ├── BookingEnginePage.js
+            ├── GuestPortalPage.js
+            ├── PaymentSettingsPage.js
+            ├── RevenueManagementPage.js
+            ├── MarketplacePage.js
+            ├── OrdersHistoryPage.js
+            ├── MarketplaceAdminPage.js
+            ├── OtaIntegrationPage.js    # NOVO
+            ├── HrManagementPage.js       # NOVO
+            └── EventsManagementPage.js   # NOVO
+```
 
 ---
 
