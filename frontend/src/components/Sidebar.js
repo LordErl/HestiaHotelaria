@@ -32,7 +32,8 @@ import {
   Settings2,
   Globe,
   UserCog,
-  PartyPopper
+  PartyPopper,
+  RefreshCw
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -59,6 +60,7 @@ const Sidebar = () => {
     { to: '/ota-integration', icon: Globe, label: 'OTAs' },
     { to: '/hr', icon: UserCog, label: 'RH' },
     { to: '/events', icon: PartyPopper, label: 'Eventos' },
+    { to: '/subscriptions', icon: RefreshCw, label: 'Assinaturas' },
     { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
     { to: '/marketplace-admin', icon: Settings2, label: 'Admin MP' },
   ];
