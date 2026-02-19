@@ -87,6 +87,25 @@ const LoyaltyPage = () => {
     }
   };
 
+  const populateDemoData = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/loyalty/demo-data/${hotelId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message || 'Dados de demonstração criados!');
+        loadData();
+      } else {
+        toast.error('Erro ao criar dados de demonstração');
+      }
+    } catch (error) {
+      toast.error('Erro ao criar dados de demonstração');
+    }
+  };
+
   const addPoints = async () => {
     if (!selectedMember || !pointsToAdd) return;
     
