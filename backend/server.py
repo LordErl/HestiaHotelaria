@@ -3798,17 +3798,17 @@ async def export_reports(hotel_id: str, report_type: str = "overview", format: s
     from io import StringIO
     import csv
     
-    # Get report data based on type
+    # Get report data based on type - call the internal logic directly
     if report_type == "overview":
         data = await get_reports_overview(hotel_id, period, current_user)
     elif report_type == "revenue":
-        data = await get_reports_revenue(hotel_id, period, current_user)
+        data = await get_revenue_report(hotel_id, period, current_user)
     elif report_type == "occupancy":
-        data = await get_reports_occupancy(hotel_id, period, current_user)
+        data = await get_occupancy_report(hotel_id, period, current_user)
     elif report_type == "guests":
-        data = await get_reports_guests(hotel_id, period, current_user)
+        data = await get_guests_report(hotel_id, period, current_user)
     elif report_type == "channels":
-        data = await get_reports_channels(hotel_id, period, current_user)
+        data = await get_channels_report(hotel_id, period, current_user)
     else:
         raise HTTPException(status_code=400, detail="Tipo de relatório inválido")
     
@@ -3844,7 +3844,6 @@ async def export_reports(hotel_id: str, report_type: str = "overview", format: s
         
         csv_content = output.getvalue()
         
-        from fastapi.responses import Response
         return Response(
             content=csv_content,
             media_type="text/csv",
