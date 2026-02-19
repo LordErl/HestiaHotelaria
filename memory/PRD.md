@@ -46,7 +46,7 @@
 - Gráficos interativos: Área (receita), Barras (ocupação), Pizza (composição)
 - Filtro por período: Semana, Mês, Trimestre, Ano
 - Análise de canais com comissões e insights
-- Botão de exportação
+- **Exportação CSV/JSON**: Dropdown com 6 opções de exportação
 
 #### Motor de Reservas (`/booking`) ✅ TESTADO
 - **5 Passos**: Busca → Seleção de Quarto → Dados do Hóspede → Pagamento → Confirmação
