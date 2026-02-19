@@ -539,7 +539,8 @@ async def get_public_payment_providers(hotel_id: str):
 import resend
 import asyncio
 
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@hestia.com')
+# Resend requires a verified domain. For testing, use onboarding@resend.dev
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 
 async def send_email_async(to_email: str, subject: str, html_content: str):
     """Send email asynchronously"""
