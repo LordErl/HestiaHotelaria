@@ -2329,8 +2329,6 @@ async def get_ota_stats(hotel_id: str, current_user: dict = Depends(get_current_
     
     return stats
 
-import random  # Add to imports if not present
-
 # ================== GESTÃO DE PESSOAS (RH) ==================
 
 class EmployeeCreate(BaseModel):
