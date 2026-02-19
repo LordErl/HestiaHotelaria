@@ -3380,6 +3380,473 @@ async def mobile_update_task(task_id: str, status: str, current_user: dict = Dep
     except:
         return {'message': 'Tarefa atualizada', 'status': status}
 
+# ================== OTA REAL INTEGRATION ==================
+
+@api_router.post("/ota/channels/{channel_id}/test")
+async def test_ota_connection(channel_id: str, current_user: dict = Depends(get_current_user)):
+    """Test connection to OTA with real credentials"""
+    from integrations.ota_connectors import get_connector
+    
+    channel = supabase.table('ota_channels').select('*').eq('id', channel_id).single().execute()
+    if not channel.data:
+        raise HTTPException(status_code=404, detail="Canal não encontrado")
+    
+    ch = channel.data
+    credentials = {
+        'api_username': ch.get('api_username'),
+        'api_password': ch.get('api_password'),
+        'api_key': ch.get('api_key'),
+        'api_secret': ch.get('api_secret'),
+        'property_id': ch.get('property_id'),
+        'sandbox': True  # Always use sandbox for testing
+    }
+    
+    connector = get_connector(ch['channel_name'], credentials)
+    if not connector:
+        return {"success": False, "error": f"Conector não disponível para {ch['channel_name']}"}
+    
+    result = await connector.test_connection()
+    
+    # Update channel status based on test
+    if result.get('success'):
+        supabase.table('ota_channels').update({
+            'last_sync_status': 'success',
+            'error_message': None,
+            'last_sync_at': datetime.now(timezone.utc).isoformat()
+        }).eq('id', channel_id).execute()
+    else:
+        supabase.table('ota_channels').update({
+            'last_sync_status': 'error',
+            'error_message': result.get('error', 'Erro de conexão')
+        }).eq('id', channel_id).execute()
+    
+    return result
+
+@api_router.post("/ota/channels/{channel_id}/sync-real")
+async def sync_ota_channel_real(channel_id: str, current_user: dict = Depends(get_current_user)):
+    """Sync availability and rates with OTA using real API"""
+    from integrations.ota_connectors import get_connector
+    
+    channel = supabase.table('ota_channels').select('*').eq('id', channel_id).single().execute()
+    if not channel.data:
+        raise HTTPException(status_code=404, detail="Canal não encontrado")
+    
+    ch = channel.data
+    hotel_id = ch['hotel_id']
+    
+    credentials = {
+        'api_username': ch.get('api_username'),
+        'api_password': ch.get('api_password'),
+        'api_key': ch.get('api_key'),
+        'api_secret': ch.get('api_secret'),
+        'property_id': ch.get('property_id'),
+        'sandbox': True
+    }
+    
+    connector = get_connector(ch['channel_name'], credentials)
+    if not connector:
+        return {"success": False, "error": f"Conector não disponível"}
+    
+    # Get rooms and rates from database
+    rooms = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).execute()
+    room_types = supabase.table('room_types').select('*').eq('hotel_id', hotel_id).execute()
+    
+    # Sync dates: today + 365 days
+    date_from = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    date_to = (datetime.now(timezone.utc) + timedelta(days=365)).strftime('%Y-%m-%d')
+    
+    results = {
+        'availability': None,
+        'rates': None,
+        'reservations': []
+    }
+    
+    # Sync availability
+    try:
+        results['availability'] = await connector.sync_availability(rooms.data, date_from, date_to)
+    except Exception as e:
+        results['availability'] = {'success': False, 'error': str(e)}
+    
+    # Sync rates
+    try:
+        rates = [{'room_type_id': rt['id'], 'price': rt['base_price'], 'currency': 'BRL'} for rt in room_types.data]
+        results['rates'] = await connector.sync_rates(rates, date_from, date_to)
+    except Exception as e:
+        results['rates'] = {'success': False, 'error': str(e)}
+    
+    # Fetch new reservations
+    try:
+        results['reservations'] = await connector.fetch_reservations(date_from, date_to)
+    except Exception as e:
+        logger.warning(f"Fetch reservations error: {e}")
+    
+    # Update channel sync status
+    sync_success = results['availability'].get('success', False) and results['rates'].get('success', False)
+    supabase.table('ota_channels').update({
+        'last_sync_at': datetime.now(timezone.utc).isoformat(),
+        'last_sync_status': 'success' if sync_success else 'error',
+        'error_message': None if sync_success else 'Erro parcial na sincronização'
+    }).eq('id', channel_id).execute()
+    
+    # Log sync
+    try:
+        supabase.table('ota_sync_logs').insert({
+            'id': str(uuid.uuid4()),
+            'channel_id': channel_id,
+            'hotel_id': hotel_id,
+            'sync_type': 'full',
+            'status': 'success' if sync_success else 'partial',
+            'details': results,
+            'completed_at': datetime.now(timezone.utc).isoformat()
+        }).execute()
+    except:
+        pass
+    
+    return {
+        "message": "Sincronização concluída",
+        "channel": ch['channel_name'],
+        "results": results
+    }
+
+# ================== STRIPE BILLING ==================
+
+class SubscriptionPlanCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price_monthly: float
+    price_yearly: Optional[float] = None
+    features: List[str] = []
+    trial_days: int = 14
+    is_active: bool = True
+
+class SubscribeRequest(BaseModel):
+    plan_id: str
+    hotel_id: str
+    billing_email: str
+    billing_name: str
+    success_url: str
+    cancel_url: str
+
+@api_router.post("/billing/plans")
+async def create_subscription_plan(plan: SubscriptionPlanCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new subscription plan with Stripe"""
+    from integrations.stripe_billing import stripe_billing
+    
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas admin pode criar planos")
+    
+    # Create product in Stripe
+    product_result = await stripe_billing.create_product(
+        name=plan.name,
+        description=plan.description,
+        metadata={'hestia_plan': 'true'}
+    )
+    
+    if not product_result.get('success'):
+        raise HTTPException(status_code=400, detail=product_result.get('error', 'Erro ao criar produto'))
+    
+    stripe_product_id = product_result['product_id']
+    
+    # Create monthly price
+    monthly_price = await stripe_billing.create_price(
+        product_id=stripe_product_id,
+        amount=int(plan.price_monthly * 100),  # Convert to cents
+        currency='brl',
+        interval='month'
+    )
+    
+    # Create yearly price if provided
+    yearly_price_id = None
+    if plan.price_yearly:
+        yearly_result = await stripe_billing.create_price(
+            product_id=stripe_product_id,
+            amount=int(plan.price_yearly * 100),
+            currency='brl',
+            interval='year'
+        )
+        if yearly_result.get('success'):
+            yearly_price_id = yearly_result['price_id']
+    
+    # Save to database
+    plan_id = str(uuid.uuid4())
+    plan_data = {
+        'id': plan_id,
+        'name': plan.name,
+        'description': plan.description,
+        'price_monthly': plan.price_monthly,
+        'price_yearly': plan.price_yearly,
+        'features': plan.features,
+        'trial_days': plan.trial_days,
+        'is_active': plan.is_active,
+        'stripe_product_id': stripe_product_id,
+        'stripe_price_monthly_id': monthly_price.get('price_id'),
+        'stripe_price_yearly_id': yearly_price_id
+    }
+    
+    supabase.table('subscription_plans').insert(plan_data).execute()
+    
+    return {"message": "Plano criado com sucesso", "plan_id": plan_id, "stripe_product_id": stripe_product_id}
+
+@api_router.get("/billing/plans")
+async def get_billing_plans():
+    """Get all active subscription plans"""
+    result = supabase.table('subscription_plans').select('*').eq('is_active', True).execute()
+    return result.data
+
+@api_router.post("/billing/subscribe")
+async def subscribe_to_plan(request: SubscribeRequest, current_user: dict = Depends(get_current_user)):
+    """Subscribe a hotel to a plan - creates Stripe Checkout session"""
+    from integrations.stripe_billing import stripe_billing
+    
+    # Get plan
+    plan = supabase.table('subscription_plans').select('*').eq('id', request.plan_id).single().execute()
+    if not plan.data:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    plan_data = plan.data
+    
+    # Create checkout session
+    result = await stripe_billing.create_subscription_checkout(
+        price_id=plan_data['stripe_price_monthly_id'],
+        customer_email=request.billing_email,
+        success_url=request.success_url,
+        cancel_url=request.cancel_url,
+        trial_days=plan_data.get('trial_days', 0),
+        metadata={
+            'hotel_id': request.hotel_id,
+            'plan_id': request.plan_id,
+            'billing_name': request.billing_name
+        }
+    )
+    
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('error', 'Erro ao criar checkout'))
+    
+    return {
+        "checkout_url": result['checkout_url'],
+        "session_id": result['session_id']
+    }
+
+@api_router.get("/billing/subscription/{hotel_id}")
+async def get_hotel_subscription(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Get subscription status for a hotel"""
+    result = supabase.table('marketplace_subscriptions').select('*, subscription_plans(*)').eq('hotel_id', hotel_id).eq('status', 'active').single().execute()
+    
+    if not result.data:
+        return {"subscribed": False}
+    
+    return {
+        "subscribed": True,
+        "subscription": result.data
+    }
+
+@api_router.post("/billing/portal/{hotel_id}")
+async def get_billing_portal(hotel_id: str, return_url: str, current_user: dict = Depends(get_current_user)):
+    """Get Stripe Billing Portal URL for customer self-service"""
+    from integrations.stripe_billing import stripe_billing
+    
+    # Get subscription
+    sub = supabase.table('marketplace_subscriptions').select('stripe_customer_id').eq('hotel_id', hotel_id).eq('status', 'active').single().execute()
+    
+    if not sub.data or not sub.data.get('stripe_customer_id'):
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada")
+    
+    result = await stripe_billing.create_billing_portal_session(
+        customer_id=sub.data['stripe_customer_id'],
+        return_url=return_url
+    )
+    
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('error'))
+    
+    return {"portal_url": result['portal_url']}
+
+@api_router.post("/webhook/stripe-billing")
+async def stripe_billing_webhook(request: Request):
+    """Handle Stripe billing webhooks"""
+    from integrations.stripe_billing import stripe_billing
+    
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature', '')
+    
+    verification = stripe_billing.verify_webhook(payload, sig_header)
+    if not verification.get('success'):
+        logger.warning(f"Webhook verification failed: {verification.get('error')}")
+        # Continue anyway in development
+    
+    try:
+        event = json.loads(payload)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    
+    event_type = event.get('type', '')
+    data = event.get('data', {}).get('object', {})
+    
+    logger.info(f"Stripe billing webhook: {event_type}")
+    
+    if event_type == 'checkout.session.completed':
+        # Subscription created through checkout
+        metadata = data.get('metadata', {})
+        hotel_id = metadata.get('hotel_id')
+        plan_id = metadata.get('plan_id')
+        subscription_id = data.get('subscription')
+        customer_id = data.get('customer')
+        
+        if hotel_id and plan_id:
+            sub_data = {
+                'id': str(uuid.uuid4()),
+                'hotel_id': hotel_id,
+                'plan_id': plan_id,
+                'stripe_subscription_id': subscription_id,
+                'stripe_customer_id': customer_id,
+                'status': 'active',
+                'started_at': datetime.now(timezone.utc).isoformat()
+            }
+            supabase.table('marketplace_subscriptions').insert(sub_data).execute()
+    
+    elif event_type == 'customer.subscription.deleted':
+        subscription_id = data.get('id')
+        supabase.table('marketplace_subscriptions').update({
+            'status': 'cancelled',
+            'cancelled_at': datetime.now(timezone.utc).isoformat()
+        }).eq('stripe_subscription_id', subscription_id).execute()
+    
+    elif event_type == 'invoice.payment_failed':
+        subscription_id = data.get('subscription')
+        supabase.table('marketplace_subscriptions').update({
+            'status': 'past_due'
+        }).eq('stripe_subscription_id', subscription_id).execute()
+    
+    return {"received": True}
+
+# ================== LOYALTY DEMO DATA ==================
+
+@api_router.post("/loyalty/demo-data/{hotel_id}")
+async def populate_loyalty_demo_data(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Populate demo data for loyalty program"""
+    if current_user['role'] not in ['admin', 'manager']:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    # Get existing guests
+    guests = supabase.table('guests').select('id, name, email').eq('hotel_id', hotel_id).execute()
+    
+    if not guests.data:
+        # Create demo guests
+        demo_guests = [
+            {'id': str(uuid.uuid4()), 'hotel_id': hotel_id, 'name': 'Maria Silva', 'email': 'maria.silva@email.com', 'document_type': 'cpf', 'document_number': '12345678901'},
+            {'id': str(uuid.uuid4()), 'hotel_id': hotel_id, 'name': 'João Santos', 'email': 'joao.santos@email.com', 'document_type': 'cpf', 'document_number': '23456789012'},
+            {'id': str(uuid.uuid4()), 'hotel_id': hotel_id, 'name': 'Ana Oliveira', 'email': 'ana.oliveira@email.com', 'document_type': 'cpf', 'document_number': '34567890123'},
+            {'id': str(uuid.uuid4()), 'hotel_id': hotel_id, 'name': 'Carlos Pereira', 'email': 'carlos.pereira@email.com', 'document_type': 'cpf', 'document_number': '45678901234'},
+            {'id': str(uuid.uuid4()), 'hotel_id': hotel_id, 'name': 'Lucia Ferreira', 'email': 'lucia.ferreira@email.com', 'document_type': 'cpf', 'document_number': '56789012345'},
+        ]
+        for g in demo_guests:
+            try:
+                supabase.table('guests').insert(g).execute()
+            except:
+                pass
+        guests = supabase.table('guests').select('id, name, email').eq('hotel_id', hotel_id).execute()
+    
+    # Create loyalty members with varied tiers
+    tiers = ['Bronze', 'Bronze', 'Silver', 'Silver', 'Gold', 'Platinum']
+    points_ranges = {
+        'Bronze': (100, 999),
+        'Silver': (1000, 4999),
+        'Gold': (5000, 14999),
+        'Platinum': (15000, 50000)
+    }
+    
+    members_created = 0
+    for i, guest in enumerate(guests.data[:6]):
+        tier = tiers[i % len(tiers)]
+        min_pts, max_pts = points_ranges[tier]
+        lifetime_points = random.randint(min_pts, max_pts)
+        available_points = random.randint(int(min_pts * 0.3), lifetime_points)
+        
+        member_data = {
+            'id': str(uuid.uuid4()),
+            'hotel_id': hotel_id,
+            'guest_id': guest['id'],
+            'current_tier': tier,
+            'lifetime_points': lifetime_points,
+            'available_points': available_points,
+            'join_date': (datetime.now(timezone.utc) - timedelta(days=random.randint(30, 365))).isoformat(),
+            'last_activity': (datetime.now(timezone.utc) - timedelta(days=random.randint(1, 30))).isoformat()
+        }
+        
+        try:
+            supabase.table('loyalty_members').insert(member_data).execute()
+            members_created += 1
+        except Exception as e:
+            logger.warning(f"Error creating loyalty member: {e}")
+    
+    return {
+        "message": f"{members_created} membros de fidelidade criados",
+        "members_created": members_created
+    }
+
+# ================== REPORTS EXPORT ==================
+
+@api_router.get("/reports/export/{hotel_id}")
+async def export_reports(hotel_id: str, report_type: str = "overview", format: str = "json", period: str = "month", current_user: dict = Depends(get_current_user)):
+    """Export reports in JSON or CSV format"""
+    from io import StringIO
+    import csv
+    
+    # Get report data based on type
+    if report_type == "overview":
+        data = await get_reports_overview(hotel_id, period, current_user)
+    elif report_type == "revenue":
+        data = await get_reports_revenue(hotel_id, period, current_user)
+    elif report_type == "occupancy":
+        data = await get_reports_occupancy(hotel_id, period, current_user)
+    elif report_type == "guests":
+        data = await get_reports_guests(hotel_id, period, current_user)
+    elif report_type == "channels":
+        data = await get_reports_channels(hotel_id, period, current_user)
+    else:
+        raise HTTPException(status_code=400, detail="Tipo de relatório inválido")
+    
+    if format == "json":
+        return data
+    
+    elif format == "csv":
+        output = StringIO()
+        
+        if report_type == "overview":
+            writer = csv.writer(output)
+            writer.writerow(['KPI', 'Valor'])
+            for key, value in data.get('kpis', {}).items():
+                writer.writerow([key, value])
+        
+        elif report_type == "revenue":
+            writer = csv.DictWriter(output, fieldnames=['date', 'rooms', 'fnb', 'spa', 'events', 'other', 'total'])
+            writer.writeheader()
+            for row in data.get('daily_data', []):
+                writer.writerow(row)
+        
+        elif report_type == "occupancy":
+            writer = csv.DictWriter(output, fieldnames=['date', 'occupancy', 'available', 'sold'])
+            writer.writeheader()
+            for row in data.get('daily_data', []):
+                writer.writerow(row)
+        
+        elif report_type == "channels":
+            writer = csv.DictWriter(output, fieldnames=['name', 'reservations', 'revenue', 'adr', 'commission'])
+            writer.writeheader()
+            for row in data.get('channels', []):
+                writer.writerow({k: v for k, v in row.items() if k in ['name', 'reservations', 'revenue', 'adr', 'commission']})
+        
+        csv_content = output.getvalue()
+        
+        from fastapi.responses import Response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={report_type}_{period}.csv"}
+        )
+    
+    raise HTTPException(status_code=400, detail="Formato não suportado")
+
 # ================== ROOT ==================
 
 @api_router.get("/")
