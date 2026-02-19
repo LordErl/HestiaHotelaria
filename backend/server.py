@@ -1966,7 +1966,11 @@ async def get_orders(current_user: dict = Depends(get_current_user)):
     """Get orders for current hotel"""
     hotel_id = current_user.get('hotel_id')
     if not hotel_id:
-        return []
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
+        else:
+            return []
     
     result = supabase.table('marketplace_orders').select('*').eq('hotel_id', hotel_id).order('created_at', desc=True).execute()
     return result.data
