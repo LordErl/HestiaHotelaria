@@ -500,8 +500,23 @@ const OtaIntegrationPage = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                        onClick={() => testConnection(channel.id)}
+                        disabled={!channel.property_id || testing[channel.id]}
+                        data-testid={`test-${channel.channel_name}`}
+                      >
+                        {testing[channel.id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4" />
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
                         className="border-white/10 text-[#D4AF37] hover:bg-[#D4AF37]/10"
-                        onClick={() => syncChannel(channel.id)}
+                        onClick={() => syncChannel(channel.id, true)}
                         disabled={!channel.is_active || syncing[channel.id]}
                         data-testid={`sync-${channel.channel_name}`}
                       >
