@@ -16,12 +16,40 @@
 | **Pagamentos** | ✅ | Stripe, Mercado Pago PIX, CORA |
 | **Revenue Management** | ✅ | KPIs, gráficos, previsão, precificação dinâmica |
 | **Marketplace** | ✅ | Catálogo, carrinho, checkout, pedidos |
-| **Histórico de Pedidos** | ✅ | Página de pedidos para hotéis |
 | **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
 | **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
-| **Integração OTAs** | ✅ | Booking, Expedia, Airbnb, Decolar (configuração) |
-| **Eventos & Salas** | ✅ | Espaços para eventos, agendamento |
-| **Gestão de RH** | ⚠️ | Frontend pronto, schema DB precisa ajuste |
+| **Integração OTAs** | ✅ | Booking, Expedia, Airbnb, Decolar |
+| **Gestão de Eventos** | ✅ | Espaços e agendamento de eventos |
+| **Gestão de RH** | ✅ | Funcionários, escalas, férias |
+| **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
+
+---
+
+## Implementações Recentes (19/02/2026)
+
+### Módulos Avançados Completos
+1. **OTA Integration** - Integração com canais de distribuição
+   - 4 canais configurados: Booking.com, Expedia, Airbnb, Decolar
+   - Ativação/desativação de canais
+   - Configuração de credenciais API
+   - Dashboard de estatísticas
+
+2. **Gestão de RH** - Recursos Humanos
+   - Cadastro de funcionários com dados completos
+   - Controle de escalas de trabalho
+   - Solicitações de férias e afastamentos
+   - Dashboard com estatísticas
+
+3. **Gestão de Eventos** - Salas e Eventos
+   - Cadastro de espaços (salas de reunião, auditórios, salões)
+   - Capacidades por tipo de layout
+   - Precificação (hora, meio período, dia inteiro)
+   - Agendamento de eventos
+
+4. **Emails Transacionais** - Resend Integration
+   - Email de confirmação de reserva automático
+   - Email de confirmação de pedidos do Marketplace
+   - Templates HTML responsivos
 
 ---
 
@@ -50,41 +78,6 @@
 
 ---
 
-## Novos Módulos (Dezembro 2025)
-
-### 1. Integração OTAs (/ota-integration)
-- **Status**: ✅ Funcional
-- **Canais Suportados**: Booking.com, Expedia, Airbnb, Decolar
-- **Funcionalidades**:
-  - Visualizar e gerenciar canais OTA
-  - Ativar/desativar canais
-  - Configurar credenciais de API
-  - Sincronização de inventário e tarifas
-  - Dashboard com estatísticas de canais
-
-### 2. Gestão de Eventos (/events)
-- **Status**: ✅ Funcional
-- **Funcionalidades**:
-  - Cadastro de espaços (salas de reunião, auditórios, salões)
-  - Capacidades por tipo de layout (teatro, banquete, coquetel)
-  - Precificação (hora, meio período, dia inteiro)
-  - Agendamento de eventos
-  - Dados do cliente/contratante
-  - Status do evento (consulta, tentativo, confirmado)
-  - Dashboard com estatísticas
-
-### 3. Gestão de RH (/hr)
-- **Status**: ⚠️ Frontend pronto, Backend precisa de ajuste no schema
-- **Funcionalidades Planejadas**:
-  - Cadastro de funcionários
-  - Controle de escalas
-  - Solicitações de férias/afastamentos
-  - Dashboard com estatísticas de RH
-- **Pendência**: A tabela `employees` no Supabase tem schema diferente do esperado. 
-  - Solução: Executar o script `/app/backend/advanced_modules_schema.sql` para criar/atualizar as tabelas
-
----
-
 ## Credentials de Teste
 
 - **Admin**: admin@hestia.com / admin123
@@ -99,35 +92,40 @@
 | Stripe | ✅ | Pagamentos com cartão (teste) |
 | Mercado Pago | ✅ | PIX e cartão |
 | CORA | ⚠️ | PIX (requer certificados mTLS) |
-| Resend | ⚠️ | Email (chave configurada, envio pendente) |
+| Resend | ✅ | Email transacional funcionando |
 | Gemini | ✅ | IA para assistentes |
 
 ---
 
-## Pendências e Próximos Passos
+## Testes Realizados
 
-### ⚠️ Ação Necessária do Usuário
+### Backend (100% - 13/13 testes)
+- ✅ Login e autenticação
+- ✅ CRUD de funcionários (RH)
+- ✅ Estatísticas de RH
+- ✅ Criação de espaços para eventos
+- ✅ Criação de eventos
+- ✅ Estatísticas de eventos
+- ✅ Inicialização de canais OTA
+- ✅ Listagem de canais OTA
+- ✅ Disponibilidade pública de quartos
+- ✅ Criação de reserva pública
+- ✅ Envio de email de confirmação
 
-1. **Corrigir tabela employees no Supabase**:
-   - A tabela `employees` existe mas com schema incompatível
-   - Executar DROP TABLE e depois o script `/app/backend/advanced_modules_schema.sql`
-   - Ou alterar manualmente a tabela para adicionar as colunas necessárias
+---
 
-2. **Popular produtos do Marketplace**:
-   - Executar `/app/backend/marketplace_produtos_adicionais.sql`
+## Próximos Passos
 
 ### P1 - Próximas Features
-- Implementar envio de emails via Resend (confirmação de reserva, pedidos)
-- Integrar pagamentos ao Motor de Reservas
-- Completar lógica de sincronização OTA
-- Assinaturas recorrentes no Marketplace
+- Integrar pagamentos ao Motor de Reservas (checkout de quartos)
+- Implementar lógica de sincronização real com OTAs
+- Adicionar mais produtos ao Marketplace
 
 ### P2 - Módulos Futuros
+- Assinaturas recorrentes no Marketplace
 - App mobile para hóspedes
 - App mobile para staff
-- Manutenção preventiva
 - Programa de fidelidade
-- ESG
 
 ---
 
@@ -151,36 +149,18 @@
 │   ├── server.py                       # Monólito FastAPI
 │   ├── advanced_modules_schema.sql     # Schema para OTAs, RH, Eventos
 │   ├── marketplace_schema.sql          # Schema Marketplace
-│   ├── marketplace_produtos_adicionais.sql
-│   ├── payment_schema.sql
-│   ├── schema.sql
+│   ├── tests/
+│   │   └── test_hestia_modules.py      # Testes automatizados
 │   └── requirements.txt
 └── frontend/
     └── src/
         ├── components/
         │   ├── ui/                      # Shadcn components
-        │   ├── Layout.js
         │   └── Sidebar.js
-        ├── context/
-        │   └── AuthContext.js
         └── pages/
-            ├── DashboardPage.js
-            ├── ReservationsPage.js
-            ├── RoomsPage.js
-            ├── GuestsPage.js
-            ├── CheckInOutPage.js
-            ├── HousekeepingPage.js
-            ├── ChatPage.js
-            ├── BookingEnginePage.js
-            ├── GuestPortalPage.js
-            ├── PaymentSettingsPage.js
-            ├── RevenueManagementPage.js
-            ├── MarketplacePage.js
-            ├── OrdersHistoryPage.js
-            ├── MarketplaceAdminPage.js
-            ├── OtaIntegrationPage.js    # NOVO
-            ├── HrManagementPage.js       # NOVO
-            └── EventsManagementPage.js   # NOVO
+            ├── OtaIntegrationPage.js
+            ├── HrManagementPage.js
+            └── EventsManagementPage.js
 ```
 
 ---
