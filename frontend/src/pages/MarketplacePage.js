@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { 
   ShoppingCart, Package, Search, Plus, Minus, Trash2, 
-  CheckCircle, Truck, Star, Tag, ArrowRight, X, ShoppingBag
+  CheckCircle, Truck, Star, Tag, ArrowRight, X, ShoppingBag,
+  MapPin, CreditCard, QrCode, Loader2, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 
