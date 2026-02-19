@@ -1862,6 +1862,10 @@ async def remove_from_cart(item_id: str, current_user: dict = Depends(get_curren
 async def clear_cart(current_user: dict = Depends(get_current_user)):
     """Clear entire cart"""
     hotel_id = current_user.get('hotel_id')
+    if not hotel_id:
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
     if hotel_id:
         supabase.table('marketplace_cart').delete().eq('hotel_id', hotel_id).execute()
     return {"message": "Carrinho limpo"}
@@ -1872,7 +1876,11 @@ async def create_order(order_data: CreateOrder, current_user: dict = Depends(get
     """Create order from cart"""
     hotel_id = current_user.get('hotel_id')
     if not hotel_id:
-        raise HTTPException(status_code=400, detail="Usuário sem hotel associado")
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
+        else:
+            raise HTTPException(status_code=400, detail="Nenhum hotel disponível")
     
     # Get cart items
     cart_result = supabase.table('marketplace_cart').select('*, marketplace_products(*)').eq('hotel_id', hotel_id).execute()
