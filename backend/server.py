@@ -810,8 +810,9 @@ async def create_public_reservation(data: dict):
         'total_amount': data.get('total_amount'),
         'status': 'confirmed',
         'payment_status': 'pending',
-        'special_requests': guest_data.get('special_requests'),
-        'confirmation_code': confirmation_code
+        'notes': guest_data.get('special_requests'),
+        'confirmation_code': confirmation_code,
+        'source': 'booking_engine'
     }
     
     supabase.table('reservations').insert(reservation).execute()
