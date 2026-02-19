@@ -2043,6 +2043,21 @@ async def create_order(order_data: CreateOrder, current_user: dict = Depends(get
             new_stock = max(0, product.data['stock_quantity'] - item['quantity'])
             supabase.table('marketplace_products').update({'stock_quantity': new_stock}).eq('id', item['product_id']).execute()
     
+    # Send order confirmation email
+    try:
+        user_email = current_user.get('email')
+        hotel_result = supabase.table('hotels').select('name').eq('id', hotel_id).single().execute()
+        hotel_name = hotel_result.data.get('name', 'Hestia Hotel') if hotel_result.data else 'Hestia Hotel'
+        
+        if user_email:
+            asyncio.create_task(send_email_async(
+                user_email,
+                f"Pedido Confirmado - {order_number} - Marketplace Hestia",
+                get_marketplace_order_confirmation_html(order, order_items, hotel_name, user_email)
+            ))
+    except Exception as e:
+        logger.warning(f"Failed to send order confirmation email: {e}")
+    
     return {"message": "Pedido criado com sucesso", "order_id": order_id, "order_number": order_number, "total": total_amount}
 
 @api_router.get("/marketplace/orders")
