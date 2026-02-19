@@ -251,6 +251,7 @@ const OtaIntegrationPage = () => {
       api_username: channel.api_username || '',
       api_password: '',
       api_key: channel.api_key || '',
+      api_secret: '',
       property_id: channel.property_id || '',
       commission_rate: channel.commission_rate || 15
     });
@@ -271,6 +272,15 @@ const OtaIntegrationPage = () => {
     }
     
     return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pendente</Badge>;
+  };
+
+  const getOtaInfo = (channelName) => {
+    return OTA_INFO[channelName] || {
+      name: channelName,
+      color: '#6B7280',
+      description: 'Canal de distribuição',
+      fields: ['api_key', 'property_id']
+    };
   };
 
   if (loading) {
