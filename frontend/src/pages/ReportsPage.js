@@ -59,6 +59,7 @@ const ReportsPage = () => {
   const [occupancy, setOccupancy] = useState(null);
   const [guests, setGuests] = useState(null);
   const [channels, setChannels] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const hotelId = currentHotel?.id;
 
