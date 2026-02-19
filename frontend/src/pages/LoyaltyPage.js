@@ -164,13 +164,25 @@ const LoyaltyPage = () => {
           </p>
         </div>
         
-        <Button 
-          variant="outline"
-          className="border-white/10 text-[#F8FAFC]"
-        >
-          <Settings className="w-4 h-4 mr-2" />
-          Configurações
-        </Button>
+        <div className="flex gap-2">
+          {stats?.total_members === 0 && (
+            <Button 
+              onClick={populateDemoData}
+              className="bg-[#D4AF37] text-[#0B1120] hover:bg-[#D4AF37]/90"
+              data-testid="populate-demo-data"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Popular Demo
+            </Button>
+          )}
+          <Button 
+            variant="outline"
+            className="border-white/10 text-[#F8FAFC]"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Configurações
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
