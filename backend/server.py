@@ -779,23 +779,19 @@ async def create_public_reservation(data: dict):
         guest_id = str(uuid.uuid4())
         guest_insert_data = {
             'id': guest_id,
-            'full_name': guest_data.get('name'),
+            'hotel_id': data.get('hotel_id'),
+            'name': guest_data.get('name'),
             'email': guest_data.get('email'),
             'phone': guest_data.get('phone'),
+            'document_type': guest_data.get('document_type', 'cpf'),
+            'document_number': guest_data.get('document_number'),
             'total_stays': 0,
             'total_spent': 0
         }
-        # Only add document fields if they exist in the schema
         try:
             supabase.table('guests').insert(guest_insert_data).execute()
         except Exception as e:
             logger.warning(f"Guest insert error: {e}")
-            # Try minimal fields
-            supabase.table('guests').insert({
-                'id': guest_id,
-                'full_name': guest_data.get('name'),
-                'email': guest_data.get('email')
-            }).execute()
     
     # Create reservation
     reservation_id = str(uuid.uuid4())
