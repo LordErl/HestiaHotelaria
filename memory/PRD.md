@@ -18,7 +18,7 @@
 | **Marketplace** | ✅ | Catálogo, carrinho, checkout, pedidos |
 | **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
 | **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
-| **Integração OTAs** | ⚠️ MOCKED | Booking, Expedia, Airbnb, Decolar (simulado) |
+| **Integração OTAs** | ✅ PAINEL | Booking, Expedia, Airbnb, Decolar (painel admin pronto) |
 | **Gestão de Eventos** | ✅ | Espaços e agendamento de eventos |
 | **Gestão de RH** | ✅ | Funcionários, escalas, férias |
 | **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
