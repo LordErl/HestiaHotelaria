@@ -29,7 +29,10 @@ import {
   TrendingUp,
   ShoppingBag,
   Package,
-  Settings2
+  Settings2,
+  Globe,
+  UserCog,
+  PartyPopper
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -53,6 +56,9 @@ const Sidebar = () => {
     { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
     { to: '/orders', icon: Package, label: 'Meus Pedidos' },
     { to: '/chat', icon: MessageSquare, label: 'Assistente IA' },
+    { to: '/ota-integration', icon: Globe, label: 'OTAs' },
+    { to: '/hr', icon: UserCog, label: 'RH' },
+    { to: '/events', icon: PartyPopper, label: 'Eventos' },
     { to: '/payment-settings', icon: CreditCard, label: 'Pagamentos' },
     { to: '/marketplace-admin', icon: Settings2, label: 'Admin MP' },
   ];

@@ -18,6 +18,9 @@ import RevenueManagementPage from './pages/RevenueManagementPage';
 import MarketplacePage from './pages/MarketplacePage';
 import OrdersHistoryPage from './pages/OrdersHistoryPage';
 import MarketplaceAdminPage from './pages/MarketplaceAdminPage';
+import OtaIntegrationPage from './pages/OtaIntegrationPage';
+import HrManagementPage from './pages/HrManagementPage';
+import EventsManagementPage from './pages/EventsManagementPage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
@@ -62,6 +65,9 @@ function AppRoutes() {
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/orders" element={<OrdersHistoryPage />} />
         <Route path="/marketplace-admin" element={<MarketplaceAdminPage />} />
+        <Route path="/ota-integration" element={<OtaIntegrationPage />} />
+        <Route path="/hr" element={<HrManagementPage />} />
+        <Route path="/events" element={<EventsManagementPage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
