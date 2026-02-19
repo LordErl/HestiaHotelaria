@@ -174,10 +174,11 @@
 
 | API | Status | Descrição |
 |-----|--------|-----------|
-| OTA Sync | MOCKED | Retorna dados simulados |
-| Reports Data | MOCKED | Gera dados aleatórios para demo |
+| OTA Sync | MOCKED | Retorna dados simulados de sincronização |
+| Reports Data | MOCKED | Gera dados aleatórios para demonstração |
 | Mobile Guest | MOCKED | Dados de hóspede simulados |
+| Loyalty Stats | REAL | Retorna 0 membros (nenhum membro cadastrado ainda) |
 
 ---
 
-*Atualizado: 19/02/2026*
+*Atualizado: 19/02/2026 - Após validação com Testing Agent*
