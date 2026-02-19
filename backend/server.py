@@ -5,6 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import os
 import logging
+import random
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
