@@ -127,6 +127,45 @@ const MarketplacePage = () => {
     }
   };
 
+  const createOrder = async () => {
+    if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.state) {
+      toast.error('Preencha o endereço de entrega');
+      return;
+    }
+    
+    setProcessingOrder(true);
+    try {
+      const response = await fetch(`${API_URL}/api/marketplace/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          shipping_address: shippingAddress,
+          payment_method: 'pix',
+          notes: ''
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setOrderComplete(data);
+        setShowCheckout(false);
+        setShowCart(false);
+        fetchCart();
+        toast.success('Pedido criado com sucesso!');
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Erro ao criar pedido');
+      }
+    } catch (error) {
+      toast.error('Erro ao processar pedido');
+    } finally {
+      setProcessingOrder(false);
+    }
+  };
+
   const cartTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
