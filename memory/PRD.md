@@ -3,7 +3,7 @@
 
 ---
 
-## ✅ Status Atual - Dezembro 2025
+## ✅ Status Atual - Fevereiro 2026
 
 ### Módulos Implementados e Funcionais (100%)
 
@@ -11,22 +11,22 @@
 |--------|--------|-----------|
 | **PMS Core** | ✅ | Dashboard, Quartos, Reservas, Check-in/Out |
 | **Housekeeping** | ✅ | Gestão de tarefas de limpeza |
-| **Motor de Reservas** | ✅ | Booking público com pagamento integrado |
+| **Motor de Reservas** | ✅ TESTADO | Booking público com pagamento integrado (Stripe + MP PIX) |
 | **Portal do Hóspede** | ✅ | Acesso por código, chat com IA |
-| **Pagamentos** | ✅ | Stripe, Mercado Pago PIX, CORA |
+| **Pagamentos** | ✅ TESTADO | Stripe, Mercado Pago PIX, CORA |
 | **Revenue Management** | ✅ | KPIs, gráficos, previsão, precificação dinâmica |
 | **Marketplace** | ✅ | Catálogo, carrinho, checkout, pedidos |
 | **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
 | **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
-| **Integração OTAs** | ✅ | Booking, Expedia, Airbnb, Decolar + sync |
+| **Integração OTAs** | ⚠️ MOCKED | Booking, Expedia, Airbnb, Decolar (simulado) |
 | **Gestão de Eventos** | ✅ | Espaços e agendamento de eventos |
 | **Gestão de RH** | ✅ | Funcionários, escalas, férias |
 | **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
 | **Assinaturas** | ✅ | Planos recorrentes no Marketplace |
-| **Programa de Fidelidade** | ✅ | 4 tiers, pontos, recompensas |
-| **Relatórios Avançados** | ✅ | KPIs, receita, ocupação, hóspedes, canais |
-| **App Mobile Hóspede** | ✅ | Dashboard, serviços, solicitações |
-| **App Mobile Staff** | ✅ | Tarefas, solicitações, alertas |
+| **Programa de Fidelidade** | ✅ TESTADO | 4 tiers, 5 recompensas, gestão de membros |
+| **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos |
+| **App Mobile Hóspede** | ⚠️ WEB | Dashboard web responsivo (não React Native) |
+| **App Mobile Staff** | ⚠️ WEB | Dashboard web responsivo (não React Native) |
 
 ---
 
