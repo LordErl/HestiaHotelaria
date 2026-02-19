@@ -1776,8 +1776,14 @@ async def get_marketplace_product(product_id: str):
 async def get_cart(current_user: dict = Depends(get_current_user)):
     """Get current user's cart"""
     hotel_id = current_user.get('hotel_id')
+    
+    # For admins without hotel, get the first available hotel
     if not hotel_id:
-        return []
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
+        else:
+            return []
     
     result = supabase.table('marketplace_cart').select('*, marketplace_products(*)').eq('hotel_id', hotel_id).execute()
     
@@ -1799,8 +1805,14 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
 async def add_to_cart(item: CartItem, current_user: dict = Depends(get_current_user)):
     """Add item to cart"""
     hotel_id = current_user.get('hotel_id')
+    
+    # For admins without hotel, get the first available hotel
     if not hotel_id:
-        raise HTTPException(status_code=400, detail="Usuário sem hotel associado")
+        hotels = supabase.table('hotels').select('id').limit(1).execute()
+        if hotels.data:
+            hotel_id = hotels.data[0]['id']
+        else:
+            raise HTTPException(status_code=400, detail="Nenhum hotel disponível")
     
     # Check if product exists
     product = supabase.table('marketplace_products').select('id,stock_quantity').eq('id', item.product_id).single().execute()
