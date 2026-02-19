@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   Globe, 
   RefreshCw, 
@@ -19,7 +20,11 @@ import {
   Building2,
   Link2,
   Percent,
-  Calendar
+  Calendar,
+  Zap,
+  History,
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,25 +42,33 @@ const OTA_INFO = {
     name: 'Booking.com',
     logo: 'https://cf.bstatic.com/static/img/favicon/9ccd97444ec0f01c9e7f8a26ff23caefc0fe0498.ico',
     color: '#003580',
-    description: 'A maior plataforma de reservas do mundo'
+    description: 'A maior plataforma de reservas do mundo',
+    docs: 'https://developers.booking.com/',
+    fields: ['api_username', 'api_password', 'property_id']
   },
   expedia: {
     name: 'Expedia',
     logo: 'https://www.expedia.com/favicon.ico',
     color: '#00355F',
-    description: 'Grupo Expedia - Hoteis.com, Vrbo'
+    description: 'Grupo Expedia - Hoteis.com, Vrbo',
+    docs: 'https://developers.expediagroup.com/',
+    fields: ['api_key', 'api_secret', 'property_id']
   },
   airbnb: {
     name: 'Airbnb',
     logo: 'https://a0.muscache.com/airbnb/static/icons/apple-touch-icon-180x180-bcbe0e3960cd084eb8eaf1353cf3c730.png',
     color: '#FF5A5F',
-    description: 'Marketplace de hospedagem alternativa'
+    description: 'Marketplace de hospedagem alternativa',
+    docs: 'https://www.airbnb.com/partner/api',
+    fields: ['api_key', 'property_id']
   },
   decolar: {
     name: 'Decolar',
     logo: 'https://www.decolar.com/favicon.ico',
     color: '#7B2D8E',
-    description: 'Líder na América Latina'
+    description: 'Líder na América Latina',
+    docs: 'https://developers.despegar.com/',
+    fields: ['api_key', 'property_id']
   }
 };
 
@@ -64,12 +77,16 @@ const OtaIntegrationPage = () => {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState({});
+  const [testing, setTesting] = useState({});
   const [configOpen, setConfigOpen] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState(null);
+  const [syncLogs, setSyncLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState('channels');
   const [configForm, setConfigForm] = useState({
     api_username: '',
     api_password: '',
     api_key: '',
+    api_secret: '',
     property_id: '',
     commission_rate: 15
   });
