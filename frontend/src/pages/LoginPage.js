@@ -10,6 +10,7 @@ import { Crown, Mail, Lock, User, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
   const { login, register } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
