@@ -27,12 +27,42 @@
 | **Assinaturas** | ✅ | Planos recorrentes no Marketplace |
 | **Programa de Fidelidade** | ✅ TESTADO | 4 tiers, 5 recompensas, gestão de membros |
 | **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos, Export CSV/JSON |
-| **App Mobile Hóspede** | ⚠️ WEB | Dashboard web responsivo (React Native separado) |
-| **App Mobile Staff** | ⚠️ WEB | Dashboard web responsivo (React Native separado) |
+| **App Mobile Hóspede** | ✅ NOVO | React Native - 8 telas completas |
+| **App Mobile Staff** | ⏳ | React Native - Estrutura criada, aguardando desenvolvimento |
 
 ---
 
-## Implementações Recentes (19/02/2026)
+## Implementações Recentes (21/02/2026)
+
+### App Mobile do Hóspede (React Native) ✅ COMPLETO
+
+**Localização:** `/app/mobile/hestia-guest/`
+
+**8 Telas Implementadas:**
+1. **LoginScreen** - Login por código de reserva (ex: HESFC0FAA)
+2. **HomeScreen** - Dashboard com info da estadia, serviços rápidos, fidelidade
+3. **ServicesScreen** - 8 serviços do hotel (Room Service, Spa, Concierge, etc.)
+4. **ChatScreen** - Chat com IA (Jarbas) e respostas rápidas
+5. **ProfileScreen** - Perfil, programa de fidelidade, recompensas
+6. **ReservationsScreen** - Minhas reservas (próximas e histórico)
+7. **NewBookingScreen** - Criar nova reserva em 4 etapas
+8. **AccountScreen** - Conta corrente, transações, saldo
+
+**Novos Endpoints Backend:**
+- `POST /api/guest-portal/access` - Login por código
+- `GET /api/guest-portal/reservations/{guest_id}` - Listar reservas
+- `GET /api/guest-portal/services/{hotel_id}` - Serviços disponíveis
+- `POST /api/guest-portal/service-request` - Solicitar serviço
+- `GET /api/guest-portal/requests/{guest_id}` - Solicitações
+- `GET /api/guest-portal/loyalty/{guest_id}` - Info fidelidade
+- `GET /api/guest-portal/account/{guest_id}` - Conta corrente
+- `POST /api/guest-portal/booking` - Criar reserva
+
+**Testes:** 14/16 testes passaram (87.5%)
+
+---
+
+## Implementações Anteriores (19/02/2026)
 
 ### Validação Completa dos Módulos (Testado com Testing Agent)
 
