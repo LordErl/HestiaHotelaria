@@ -1831,8 +1831,24 @@ async def guest_portal_access_by_code(data: GuestCodeAccess):
     guest = guest_result.data
     
     hotel_result = supabase.table('hotels').select('*').eq('id', reservation['hotel_id']).single().execute()
-    room_result = supabase.table('rooms').select('number').eq('id', reservation['room_id']).single().execute()
-    room_type_result = supabase.table('room_types').select('name').eq('id', reservation['room_type_id']).single().execute()
+    
+    # Handle null room_id and room_type_id
+    room_number = 'N/A'
+    room_type_name = 'N/A'
+    
+    if reservation.get('room_id'):
+        try:
+            room_result = supabase.table('rooms').select('number').eq('id', reservation['room_id']).single().execute()
+            room_number = room_result.data['number'] if room_result.data else 'N/A'
+        except:
+            pass
+    
+    if reservation.get('room_type_id'):
+        try:
+            room_type_result = supabase.table('room_types').select('name').eq('id', reservation['room_type_id']).single().execute()
+            room_type_name = room_type_result.data['name'] if room_type_result.data else 'N/A'
+        except:
+            pass
     
     check_in = datetime.strptime(reservation['check_in_date'], '%Y-%m-%d')
     check_out = datetime.strptime(reservation['check_out_date'], '%Y-%m-%d')
@@ -1856,8 +1872,8 @@ async def guest_portal_access_by_code(data: GuestCodeAccess):
             "check_in_date": reservation['check_in_date'],
             "check_out_date": reservation['check_out_date'],
             "status": reservation['status'],
-            "room_number": room_result.data['number'] if room_result.data else 'N/A',
-            "room_type": room_type_result.data['name'] if room_type_result.data else 'N/A',
+            "room_number": room_number,
+            "room_type": room_type_name,
             "total_amount": reservation.get('total_amount', 0),
             "paid_amount": reservation.get('paid_amount', 0),
             "nights": nights,
