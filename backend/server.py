@@ -255,8 +255,15 @@ async def register(user_data: UserCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
-    result = supabase.table('users').select('*').eq('email', credentials.email).single().execute()
-    if not result.data:
+    try:
+        result = supabase.table('users').select('*').eq('email', credentials.email).single().execute()
+        if not result.data:
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Handle case when user not found (.single() throws exception for 0 rows)
+        logger.info(f"Login failed for {credentials.email}: {e}")
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     user = result.data
