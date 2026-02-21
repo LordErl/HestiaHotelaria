@@ -123,6 +123,16 @@
 
 ## Testes Realizados
 
+### Iteration 10 - WebSocket + Push Notifications (21/02/2026)
+- **Backend**: 10/10 testes passaram (100%)
+- **Features Validadas**:
+  - WebSocket /ws/dashboard/{hotel_id} para atualizações em tempo real
+  - GET /api/push/vapid-key - Chave pública VAPID
+  - POST /api/push/subscribe - Registro de inscrição push
+  - GET/POST /api/notifications/{hotel_id} - CRUD de notificações
+  - POST /api/push/send - Envio de push para dispositivos
+- **Frontend**: Badge de status WebSocket, Centro de Notificações com popover
+
 ### Iteration 9 - Backend + Frontend New Features (19/02/2026)
 - **Backend**: 10/10 testes passaram (100%)
 - **Features Validadas**:
