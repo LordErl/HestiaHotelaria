@@ -52,6 +52,7 @@ export const authService = {
   async logout() {
     await SecureStore.deleteItemAsync('authToken');
     await SecureStore.deleteItemAsync('guestData');
+    await SecureStore.deleteItemAsync('reservationData');
   }
 };
 
@@ -65,6 +66,11 @@ export const reservationService = {
 
   async getGuestReservations(guestId) {
     const response = await api.get(`/guest-portal/reservations/${guestId}`);
+    return response.data;
+  },
+
+  async createBooking(bookingData) {
+    const response = await api.post('/guest-portal/booking', bookingData);
     return response.data;
   }
 };
@@ -92,12 +98,12 @@ export const servicesService = {
 
 export const marketplaceService = {
   async getProducts(hotelId) {
-    const response = await api.get(`/marketplace/products/${hotelId}`);
+    const response = await api.get(`/marketplace/products`, { params: { hotel_id: hotelId } });
     return response.data;
   },
 
-  async getCategories(hotelId) {
-    const response = await api.get(`/marketplace/categories/${hotelId}`);
+  async getCategories() {
+    const response = await api.get(`/marketplace/categories`);
     return response.data;
   },
 
@@ -129,7 +135,9 @@ export const chatService = {
 
 export const loyaltyService = {
   async getMemberInfo(guestId, hotelId) {
-    const response = await api.get(`/loyalty/member/${guestId}?hotel_id=${hotelId}`);
+    const response = await api.get(`/guest-portal/loyalty/${guestId}`, {
+      params: { hotel_id: hotelId }
+    });
     return response.data;
   },
 
@@ -144,16 +152,22 @@ export const loyaltyService = {
   }
 };
 
-// ==================== CHECK-IN ====================
+// ==================== ACCOUNT ====================
 
-export const checkinService = {
-  async getMobileCheckinInfo(reservationId) {
-    const response = await api.get(`/guest-portal/checkin/${reservationId}`);
+export const accountService = {
+  async getAccountInfo(guestId) {
+    const response = await api.get(`/guest-portal/account/${guestId}`);
     return response.data;
-  },
+  }
+};
 
-  async submitMobileCheckin(reservationId, checkinData) {
-    const response = await api.post(`/guest-portal/checkin/${reservationId}`, checkinData);
+// ==================== AVAILABILITY ====================
+
+export const availabilityService = {
+  async checkAvailability(hotelId, checkIn, checkOut, adults = 2, children = 0) {
+    const response = await api.get('/public/availability', {
+      params: { hotel_id: hotelId, check_in: checkIn, check_out: checkOut, adults, children }
+    });
     return response.data;
   }
 };
