@@ -11,6 +11,10 @@ import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 import ChatScreen from '../screens/ChatScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import ReservationsScreen from '../screens/ReservationsScreen';
+import NewBookingScreen from '../screens/NewBookingScreen';
+import AccountScreen from '../screens/AccountScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -67,16 +71,27 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Account"
-        component={HomeScreen}
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          tabBarLabel: 'Conta',
+          tabBarLabel: 'Perfil',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="receipt-outline" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const MainStackNavigator = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen name="Reservations" component={ReservationsScreen} />
+      <Stack.Screen name="NewBooking" component={NewBookingScreen} />
+      <Stack.Screen name="Account" component={AccountScreen} />
+    </Stack.Navigator>
   );
 };
 
@@ -91,7 +106,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen name="Main" component={MainStackNavigator} />
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
