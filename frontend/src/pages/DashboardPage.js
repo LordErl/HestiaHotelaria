@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+import { Badge } from '../components/ui/badge';
+import { toast } from 'sonner';
+import useWebSocket from '../hooks/useWebSocket';
 import { 
   BedDouble, 
   Users, 
@@ -16,7 +19,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
-  Database
+  Database,
+  Wifi,
+  WifiOff,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
