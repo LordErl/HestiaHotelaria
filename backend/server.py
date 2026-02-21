@@ -4024,7 +4024,7 @@ async def notify_dashboard_update(hotel_id: str, event_type: str, data: dict = N
     """Send real-time notification to all connected clients for a hotel"""
     message = {
         "type": event_type,
-        "data": data or await get_dashboard_stats(hotel_id),
+        "data": data or await get_realtime_dashboard_stats(hotel_id),
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     await ws_manager.broadcast_to_hotel(message, hotel_id)
