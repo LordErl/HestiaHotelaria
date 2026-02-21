@@ -10,6 +10,8 @@
 | Módulo | Status | Descrição |
 |--------|--------|-----------|
 | **PMS Core** | ✅ | Dashboard, Quartos, Reservas, Check-in/Out |
+| **Dashboard Real-Time** | ✅ NOVO | WebSocket com atualizações automáticas a cada 30s |
+| **Notificações Push** | ✅ NOVO | Centro de notificações, inscrição push, histórico |
 | **Housekeeping** | ✅ | Gestão de tarefas de limpeza |
 | **Motor de Reservas** | ✅ TESTADO | Booking público com pagamento integrado (Stripe + MP PIX) |
 | **Portal do Hóspede** | ✅ | Acesso por código, chat com IA |
@@ -24,9 +26,9 @@
 | **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
 | **Assinaturas** | ✅ | Planos recorrentes no Marketplace |
 | **Programa de Fidelidade** | ✅ TESTADO | 4 tiers, 5 recompensas, gestão de membros |
-| **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos |
-| **App Mobile Hóspede** | ⚠️ WEB | Dashboard web responsivo (não React Native) |
-| **App Mobile Staff** | ⚠️ WEB | Dashboard web responsivo (não React Native) |
+| **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos, Export CSV/JSON |
+| **App Mobile Hóspede** | ⚠️ WEB | Dashboard web responsivo (React Native separado) |
+| **App Mobile Staff** | ⚠️ WEB | Dashboard web responsivo (React Native separado) |
 
 ---
 
