@@ -8,7 +8,7 @@ import requests
 import os
 
 # Backend URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hestia-management.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://guest-app-preview.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@hestia.com"

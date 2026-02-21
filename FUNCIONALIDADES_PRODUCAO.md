@@ -3,7 +3,7 @@
 
 **Versão:** 2.0.0  
 **Data:** 21 de Fevereiro de 2026  
-**URL de Produção:** https://hestia-management.preview.emergentagent.com
+**URL de Produção:** https://guest-app-preview.preview.emergentagent.com
 
 ---
 

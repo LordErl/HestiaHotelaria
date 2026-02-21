@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'https://hestia-management.preview.emergentagent.com/api';
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 'https://guest-app-preview.preview.emergentagent.com/api';
 
 const api = axios.create({
   baseURL: API_URL,

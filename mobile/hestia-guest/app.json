@@ -38,7 +38,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://hestia-management.preview.emergentagent.com/api"
+      "apiUrl": "https://guest-app-preview.preview.emergentagent.com/api"
     }
   }
 }

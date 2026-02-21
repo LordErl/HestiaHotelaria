@@ -138,7 +138,7 @@ hestia-staff/
 
 Os apps se conectam à API Hestia em:
 ```
-https://hestia-management.preview.emergentagent.com/api
+https://guest-app-preview.preview.emergentagent.com/api
 ```
 
 Para desenvolvimento local, atualize o `apiUrl` em `app.json`.

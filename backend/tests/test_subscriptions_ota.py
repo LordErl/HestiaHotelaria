@@ -7,7 +7,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hestia-management.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://guest-app-preview.preview.emergentagent.com')
 HOTEL_ID = "480f0940-81a5-4ca7-806d-77ed790c740a"
 
 class TestAuth:
