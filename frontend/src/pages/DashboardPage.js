@@ -87,6 +87,39 @@ const DashboardPage = () => {
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [realtimeStats, setRealtimeStats] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+
+  // WebSocket connection for real-time updates
+  const handleWebSocketMessage = useCallback((message) => {
+    console.log('WebSocket message:', message);
+    
+    if (message.type === 'dashboard_update') {
+      setRealtimeStats(message.data);
+    } else if (message.type === 'notification') {
+      const notif = message.notification;
+      setNotifications(prev => [notif, ...prev.slice(0, 9)]);
+      toast.info(notif.title, {
+        description: notif.body,
+        duration: 5000
+      });
+    } else if (message.type === 'new_reservation') {
+      toast.success(message.notification?.title || 'Nova Reserva!', {
+        description: message.notification?.body
+      });
+      // Trigger refresh
+      fetchDashboardData();
+    } else if (message.type === 'check_in' || message.type === 'check_out') {
+      toast.info(message.notification?.title, {
+        description: message.notification?.body
+      });
+    }
+  }, []);
+
+  const { isConnected, refresh: wsRefresh } = useWebSocket(
+    currentHotel?.id,
+    handleWebSocketMessage
+  );
 
   const fetchDashboardData = useCallback(async () => {
     if (!currentHotel) return;
@@ -119,6 +152,9 @@ const DashboardPage = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Merge realtime stats with fetched stats
+  const displayStats = realtimeStats || stats;
+
   const handleSeedData = async () => {
     setSeeding(true);
     try {
@@ -128,6 +164,13 @@ const DashboardPage = () => {
       console.error('Seed error:', error);
     }
     setSeeding(false);
+  };
+
+  const handleRefresh = () => {
+    fetchDashboardData();
+    if (isConnected) {
+      wsRefresh();
+    }
   };
 
   if (!currentHotel) {
