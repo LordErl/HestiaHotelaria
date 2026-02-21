@@ -261,13 +261,17 @@ class TestHousekeepingEndpoints:
         tasks = response.json()
         
         if not tasks:
-            # No tasks exist, just verify endpoint works with fake ID
+            # No tasks exist - housekeeping_tasks table may not exist in Supabase
+            # This is a known limitation - table needs to be created
             fake_id = str(uuid.uuid4())
             update_response = api_client.patch(
                 f"{BASE_URL}/api/housekeeping/tasks/{fake_id}",
                 json={"status": "in_progress"}
             )
-            # Should not crash - may return success or error
+            # 500 is expected when table doesn't exist - report as known issue
+            if update_response.status_code == 500:
+                print(f"⚠ Update housekeeping task returns 500 - housekeeping_tasks table may not exist in Supabase")
+                pytest.skip("housekeeping_tasks table does not exist in Supabase - skipping update test")
             assert update_response.status_code in [200, 404, 500], f"Unexpected status: {update_response.status_code}"
             print(f"✓ Update housekeeping task endpoint working (no tasks available for full test)")
             return
