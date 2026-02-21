@@ -2169,6 +2169,275 @@ async def create_guest_booking(data: dict):
         "room_type": room_type.data['name'] if room_type.data else 'Standard'
     }
 
+# ================== STAFF MOBILE APP ENDPOINTS ==================
+
+@api_router.get("/check-in-out/checkins/{hotel_id}")
+async def get_today_checkins(hotel_id: str):
+    """Get today's check-ins for staff app"""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).eq('check_in_date', today).in_('status', ['pending', 'confirmed']).execute()
+    
+    checkins = []
+    for res in result.data:
+        guest_name = 'Hóspede'
+        room_number = 'N/A'
+        
+        if res.get('guest_id'):
+            try:
+                guest = supabase.table('guests').select('name').eq('id', res['guest_id']).single().execute()
+                guest_name = guest.data['name'] if guest.data else 'Hóspede'
+            except:
+                pass
+        
+        if res.get('room_id'):
+            try:
+                room = supabase.table('rooms').select('number').eq('id', res['room_id']).single().execute()
+                room_number = room.data['number'] if room.data else 'N/A'
+            except:
+                pass
+        
+        check_in = datetime.strptime(res['check_in_date'], '%Y-%m-%d')
+        check_out = datetime.strptime(res['check_out_date'], '%Y-%m-%d')
+        nights = (check_out - check_in).days
+        
+        checkins.append({
+            **res,
+            'guest_name': guest_name,
+            'room_number': room_number,
+            'nights': nights
+        })
+    
+    return checkins
+
+@api_router.get("/check-in-out/checkouts/{hotel_id}")
+async def get_today_checkouts(hotel_id: str):
+    """Get today's check-outs for staff app"""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).eq('check_out_date', today).in_('status', ['checked_in', 'checked_out']).execute()
+    
+    checkouts = []
+    for res in result.data:
+        guest_name = 'Hóspede'
+        room_number = 'N/A'
+        
+        if res.get('guest_id'):
+            try:
+                guest = supabase.table('guests').select('name').eq('id', res['guest_id']).single().execute()
+                guest_name = guest.data['name'] if guest.data else 'Hóspede'
+            except:
+                pass
+        
+        if res.get('room_id'):
+            try:
+                room = supabase.table('rooms').select('number').eq('id', res['room_id']).single().execute()
+                room_number = room.data['number'] if room.data else 'N/A'
+            except:
+                pass
+        
+        check_in = datetime.strptime(res['check_in_date'], '%Y-%m-%d')
+        check_out = datetime.strptime(res['check_out_date'], '%Y-%m-%d')
+        nights = (check_out - check_in).days
+        
+        checkouts.append({
+            **res,
+            'guest_name': guest_name,
+            'room_number': room_number,
+            'nights': nights
+        })
+    
+    return checkouts
+
+@api_router.post("/check-in-out/checkin/{reservation_id}")
+async def perform_checkin(reservation_id: str, data: dict = None):
+    """Perform check-in for a reservation"""
+    try:
+        supabase.table('reservations').update({
+            'status': 'checked_in',
+            'actual_check_in': datetime.now(timezone.utc).isoformat()
+        }).eq('id', reservation_id).execute()
+        
+        return {"success": True, "message": "Check-in realizado com sucesso"}
+    except Exception as e:
+        logger.error(f"Check-in error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao realizar check-in")
+
+@api_router.post("/check-in-out/checkout/{reservation_id}")
+async def perform_checkout(reservation_id: str):
+    """Perform check-out for a reservation"""
+    try:
+        res = supabase.table('reservations').select('room_id').eq('id', reservation_id).single().execute()
+        
+        supabase.table('reservations').update({
+            'status': 'checked_out',
+            'actual_check_out': datetime.now(timezone.utc).isoformat()
+        }).eq('id', reservation_id).execute()
+        
+        # Update room status to cleaning
+        if res.data and res.data.get('room_id'):
+            supabase.table('rooms').update({'status': 'cleaning'}).eq('id', res.data['room_id']).execute()
+        
+        return {"success": True, "message": "Check-out realizado com sucesso"}
+    except Exception as e:
+        logger.error(f"Check-out error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao realizar check-out")
+
+@api_router.get("/rooms/{hotel_id}")
+async def get_hotel_rooms(hotel_id: str):
+    """Get all rooms for a hotel"""
+    result = supabase.table('rooms').select('*, room_types(name)').eq('hotel_id', hotel_id).order('number').execute()
+    
+    rooms = []
+    for room in result.data:
+        room_data = {**room}
+        room_data['type_name'] = room.get('room_types', {}).get('name', 'Standard') if room.get('room_types') else 'Standard'
+        
+        # Check if occupied
+        if room['status'] == 'occupied':
+            try:
+                res = supabase.table('reservations').select('guest_id').eq('room_id', room['id']).eq('status', 'checked_in').single().execute()
+                if res.data and res.data.get('guest_id'):
+                    guest = supabase.table('guests').select('name').eq('id', res.data['guest_id']).single().execute()
+                    room_data['guest_name'] = guest.data['name'] if guest.data else None
+            except:
+                pass
+        
+        rooms.append(room_data)
+    
+    return rooms
+
+@api_router.patch("/rooms/{room_id}/status")
+async def update_room_status(room_id: str, data: dict):
+    """Update room status"""
+    try:
+        new_status = data.get('status')
+        if new_status not in ['available', 'occupied', 'cleaning', 'maintenance', 'blocked']:
+            raise HTTPException(status_code=400, detail="Status inválido")
+        
+        supabase.table('rooms').update({'status': new_status}).eq('id', room_id).execute()
+        return {"success": True, "message": f"Status atualizado para {new_status}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Room status update error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar status")
+
+@api_router.get("/housekeeping/tasks/{hotel_id}")
+async def get_housekeeping_tasks(hotel_id: str, assigned_to: str = None, status: str = None):
+    """Get housekeeping tasks for a hotel"""
+    try:
+        query = supabase.table('housekeeping_tasks').select('*').eq('hotel_id', hotel_id)
+        
+        if assigned_to:
+            query = query.eq('assigned_to', assigned_to)
+        
+        if status:
+            query = query.eq('status', status)
+        
+        result = query.order('created_at', desc=True).execute()
+        
+        tasks = []
+        for task in result.data:
+            task_data = {**task}
+            
+            if task.get('room_id'):
+                try:
+                    room = supabase.table('rooms').select('number').eq('id', task['room_id']).single().execute()
+                    task_data['room_number'] = room.data['number'] if room.data else 'N/A'
+                except:
+                    task_data['room_number'] = 'N/A'
+            
+            task_labels = {
+                'cleaning': 'Limpeza',
+                'checkout': 'Check-out',
+                'turndown': 'Turndown',
+                'maintenance': 'Manutenção',
+                'inspection': 'Inspeção'
+            }
+            task_data['task_type_label'] = task_labels.get(task.get('task_type'), task.get('task_type'))
+            
+            tasks.append(task_data)
+        
+        return tasks
+    except Exception as e:
+        logger.warning(f"Housekeeping tasks may not exist: {e}")
+        return []
+
+@api_router.patch("/housekeeping/tasks/{task_id}")
+async def update_housekeeping_task(task_id: str, data: dict):
+    """Update housekeeping task status"""
+    try:
+        update_data = {}
+        
+        if 'status' in data:
+            update_data['status'] = data['status']
+            if data['status'] == 'in_progress':
+                update_data['started_at'] = datetime.now(timezone.utc).isoformat()
+            elif data['status'] == 'completed':
+                update_data['completed_at'] = datetime.now(timezone.utc).isoformat()
+        
+        if 'assigned_to' in data:
+            update_data['assigned_to'] = data['assigned_to']
+        
+        if 'notes' in data:
+            update_data['notes'] = data['notes']
+        
+        supabase.table('housekeeping_tasks').update(update_data).eq('id', task_id).execute()
+        return {"success": True, "message": "Tarefa atualizada"}
+    except Exception as e:
+        logger.error(f"Task update error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar tarefa")
+
+@api_router.get("/guest-requests/{hotel_id}")
+async def get_guest_requests(hotel_id: str, status: str = None):
+    """Get guest service requests"""
+    try:
+        query = supabase.table('service_requests').select('*').eq('hotel_id', hotel_id)
+        
+        if status:
+            query = query.eq('status', status)
+        
+        result = query.order('created_at', desc=True).execute()
+        
+        requests = []
+        for req in result.data:
+            req_data = {**req}
+            
+            if req.get('guest_id'):
+                try:
+                    guest = supabase.table('guests').select('name').eq('id', req['guest_id']).single().execute()
+                    req_data['guest_name'] = guest.data['name'] if guest.data else 'Hóspede'
+                except:
+                    req_data['guest_name'] = 'Hóspede'
+            
+            requests.append(req_data)
+        
+        return requests
+    except Exception as e:
+        logger.warning(f"Guest requests table may not exist: {e}")
+        return []
+
+@api_router.patch("/guest-requests/{request_id}")
+async def update_guest_request(request_id: str, data: dict):
+    """Update guest request status"""
+    try:
+        update_data = {}
+        
+        if 'status' in data:
+            update_data['status'] = data['status']
+            if data['status'] == 'completed':
+                update_data['completed_at'] = datetime.now(timezone.utc).isoformat()
+        
+        if 'assigned_to' in data:
+            update_data['assigned_to'] = data['assigned_to']
+        
+        supabase.table('service_requests').update(update_data).eq('id', request_id).execute()
+        return {"success": True, "message": "Solicitação atualizada"}
+    except Exception as e:
+        logger.error(f"Request update error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar solicitação")
+
 # ================== MARKETPLACE ==================
 
 class CartItem(BaseModel):
