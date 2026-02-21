@@ -227,10 +227,26 @@ const DashboardPage = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-[#F8FAFC]">Dashboard</h1>
-          <p className="text-[#94A3B8] mt-1">{currentHotel.name} • Visão geral em tempo real</p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-[#94A3B8]">{currentHotel.name} • Visão geral em tempo real</p>
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${isConnected ? 'text-green-400 border-green-400/30' : 'text-red-400 border-red-400/30'}`}
+              data-testid="ws-status"
+            >
+              {isConnected ? <Wifi className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
+              {isConnected ? 'Tempo Real' : 'Offline'}
+            </Badge>
+            {notifications.length > 0 && (
+              <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/30">
+                <BellRing className="w-3 h-3 mr-1" />
+                {notifications.length}
+              </Badge>
+            )}
+          </div>
         </div>
         <Button
-          onClick={fetchDashboardData}
+          onClick={handleRefresh}
           variant="outline"
           className="border-white/10 hover:border-[#D4AF37]/30 hover:bg-[#D4AF37]/10 text-[#94A3B8] hover:text-[#D4AF37]"
           data-testid="refresh-dashboard-btn"
@@ -244,8 +260,8 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Taxa de Ocupação"
-          value={`${stats?.occupancy_rate || 0}%`}
-          subtitle={`${stats?.occupied_rooms || 0} de ${stats?.total_rooms || 0} quartos`}
+          value={`${displayStats?.occupancy_rate || stats?.occupancy_rate || 0}%`}
+          subtitle={`${displayStats?.occupied_rooms || stats?.occupied_rooms || 0} de ${displayStats?.total_rooms || stats?.total_rooms || 0} quartos`}
           icon={Percent}
           trend="+5.2%"
           trendUp={true}
@@ -253,21 +269,21 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Hóspedes na Casa"
-          value={stats?.guests_in_house || 0}
+          value={displayStats?.guests_in_house || stats?.guests_in_house || 0}
           subtitle="Atualmente hospedados"
           icon={Users}
           color="blue"
         />
         <StatCard
           title="Check-ins Hoje"
-          value={stats?.todays_checkins || 0}
-          subtitle={`${stats?.pending_reservations || 0} pendentes`}
+          value={displayStats?.check_ins_today || stats?.todays_checkins || 0}
+          subtitle={`${displayStats?.pending_housekeeping || stats?.pending_reservations || 0} pendentes`}
           icon={CalendarCheck}
           color="green"
         />
         <StatCard
           title="Check-outs Hoje"
-          value={stats?.todays_checkouts || 0}
+          value={displayStats?.check_outs_today || stats?.todays_checkouts || 0}
           subtitle="Previstos para hoje"
           icon={CalendarX}
           color="orange"
@@ -278,7 +294,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatCard
           title="Receita Hoje"
-          value={`R$ ${(stats?.revenue_today || 0).toLocaleString('pt-BR')}`}
+          value={`R$ ${(displayStats?.today_revenue || stats?.revenue_today || 0).toLocaleString('pt-BR')}`}
           subtitle="Pagamentos recebidos"
           icon={DollarSign}
           trend="+12.5%"
@@ -287,7 +303,7 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Receita do Mês"
-          value={`R$ ${(stats?.revenue_month || 0).toLocaleString('pt-BR')}`}
+          value={`R$ ${(displayStats?.month_revenue || stats?.revenue_month || 0).toLocaleString('pt-BR')}`}
           subtitle="Acumulado mensal"
           icon={TrendingUp}
           trend="+8.3%"
