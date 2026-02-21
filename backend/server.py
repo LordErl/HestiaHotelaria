@@ -3921,7 +3921,7 @@ async def websocket_dashboard(websocket: WebSocket, hotel_id: str):
     
     try:
         # Send initial dashboard data
-        initial_data = await get_dashboard_stats(hotel_id)
+        initial_data = await get_realtime_dashboard_stats(hotel_id)
         await ws_manager.send_personal({
             "type": "dashboard_update",
             "data": initial_data,
@@ -3938,7 +3938,7 @@ async def websocket_dashboard(websocket: WebSocket, hotel_id: str):
                 try:
                     request = json.loads(data)
                     if request.get("action") == "refresh":
-                        dashboard_data = await get_dashboard_stats(hotel_id)
+                        dashboard_data = await get_realtime_dashboard_stats(hotel_id)
                         await ws_manager.send_personal({
                             "type": "dashboard_update",
                             "data": dashboard_data,
