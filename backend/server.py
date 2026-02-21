@@ -3964,8 +3964,8 @@ async def websocket_dashboard(websocket: WebSocket, hotel_id: str):
         logger.error(f"WebSocket error: {e}")
         ws_manager.disconnect(websocket, hotel_id)
 
-async def get_dashboard_stats(hotel_id: str) -> dict:
-    """Get current dashboard statistics for a hotel"""
+async def get_realtime_dashboard_stats(hotel_id: str) -> dict:
+    """Get current dashboard statistics for real-time WebSocket updates"""
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     
     try:
