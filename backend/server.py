@@ -1984,7 +1984,10 @@ async def get_hotel_services(hotel_id: str):
 @api_router.get("/guest-portal/account/{guest_id}")
 async def get_guest_account(guest_id: str):
     """Get guest account balance and transactions"""
-    guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    try:
+        guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Hóspede não encontrado")
     
     if not guest_result.data:
         raise HTTPException(status_code=404, detail="Hóspede não encontrado")
@@ -2034,7 +2037,10 @@ async def get_guest_account(guest_id: str):
 @api_router.get("/guest-portal/loyalty/{guest_id}")
 async def get_guest_loyalty(guest_id: str, hotel_id: str):
     """Get guest loyalty information"""
-    guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    try:
+        guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Hóspede não encontrado")
     
     if not guest_result.data:
         raise HTTPException(status_code=404, detail="Hóspede não encontrado")
