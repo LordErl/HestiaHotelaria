@@ -28,11 +28,41 @@
 | **Programa de Fidelidade** | ✅ TESTADO | 4 tiers, 5 recompensas, gestão de membros |
 | **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos, Export CSV/JSON |
 | **App Mobile Hóspede** | ✅ NOVO | React Native - 8 telas completas |
-| **App Mobile Staff** | ⏳ | React Native - Estrutura criada, aguardando desenvolvimento |
+| **App Mobile Staff** | ✅ NOVO | React Native - 8 telas completas |
 
 ---
 
 ## Implementações Recentes (21/02/2026)
+
+### App Mobile do Staff (React Native) ✅ COMPLETO
+
+**Localização:** `/app/mobile/hestia-staff/`
+
+**8 Telas Implementadas:**
+1. **LoginScreen** - Login por email/senha (admin@hestia.com)
+2. **DashboardScreen** - Dashboard com stats, check-ins/outs do dia, tarefas
+3. **TasksScreen** - Minhas tarefas com filtros e ações (iniciar/concluir)
+4. **HousekeepingScreen** - Grid de quartos com status, tarefas de limpeza
+5. **RequestsScreen** - Solicitações de hóspedes com prioridade
+6. **CheckinsScreen** - Lista de check-ins do dia
+7. **CheckoutsScreen** - Lista de check-outs com resumo financeiro
+8. **ProfileScreen** - Perfil do funcionário, configurações, logout
+
+**Novos Endpoints Backend:**
+- `GET /api/check-in-out/checkins/{hotel_id}` - Check-ins do dia
+- `GET /api/check-in-out/checkouts/{hotel_id}` - Check-outs do dia
+- `POST /api/check-in-out/checkin/{id}` - Realizar check-in
+- `POST /api/check-in-out/checkout/{id}` - Realizar check-out
+- `GET /api/rooms/{hotel_id}` - Listar quartos
+- `PATCH /api/rooms/{id}/status` - Atualizar status
+- `GET /api/housekeeping/tasks/{hotel_id}` - Tarefas housekeeping
+- `PATCH /api/housekeeping/tasks/{id}` - Atualizar tarefa
+- `GET /api/guest-requests/{hotel_id}` - Solicitações de hóspedes
+- `PATCH /api/guest-requests/{id}` - Atualizar solicitação
+
+**Testes:** 17/17 testes passaram (100%)
+
+---
 
 ### App Mobile do Hóspede (React Native) ✅ COMPLETO
 
