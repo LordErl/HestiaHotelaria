@@ -163,6 +163,19 @@
   - POST /api/push/send - Envio de push para dispositivos
 - **Frontend**: Badge de status WebSocket, Centro de Notificações com popover
 
+### Iteration 11 - Guest Mobile App Backend (21/02/2026)
+- **Backend**: 14/16 testes passaram (87.5%)
+- **Novos Endpoints**:
+  - POST /api/guest-portal/access - Login por código
+  - GET /api/guest-portal/reservations/{guest_id} - Listar reservas
+  - GET /api/guest-portal/services/{hotel_id} - Serviços disponíveis
+  - POST /api/guest-portal/service-request - Solicitar serviço
+  - GET /api/guest-portal/requests/{guest_id} - Solicitações
+  - GET /api/guest-portal/loyalty/{guest_id} - Info fidelidade
+  - GET /api/guest-portal/account/{guest_id} - Conta corrente
+  - POST /api/guest-portal/booking - Criar reserva
+- **Pendente**: Tabela service_requests no Supabase (script em `/app/scripts/service_requests_schema.sql`)
+
 ### Iteration 9 - Backend + Frontend New Features (19/02/2026)
 - **Backend**: 10/10 testes passaram (100%)
 - **Features Validadas**:
@@ -192,16 +205,21 @@
 
 ## Próximos Passos
 
+### P0 - App Mobile Staff (React Native)
+- **Próxima Tarefa**: Desenvolver o App do Staff (HestiaStaffApp) em `/app/mobile/hestia-staff/`
+- **Telas a Implementar**: Login, Dashboard, Tasks, Housekeeping, Profile
+- Criar endpoints backend para suportar o app
+
 ### P0 - Pendências de Banco de Dados
 - **Tabelas de Fidelidade**: Executar script `/app/scripts/loyalty_schema.sql` no Supabase SQL Editor
+- **Tabela Service Requests**: Executar script `/app/scripts/service_requests_schema.sql` no Supabase SQL Editor
 
-### P0 - App Mobile React Native
-- Criar projeto separado em React Native (conforme solicitado pelo usuário)
-- Definir escopo: App para hóspedes, staff, ou ambos?
+### P1 - Stripe Billing (Cobrança Recorrente)
+- Implementar lógica de cobrança recorrente com Stripe Billing
+- Criar interface de gerenciamento de assinaturas
 
 ### P1 - Integrações Reais
 - **OTA Real Sync**: Obter credenciais de API de Booking.com, Expedia para conexão real
-- **Stripe Billing**: Configurar webhook de produção e chave de API real
 - **Push Notifications Real**: Gerar chaves VAPID próprias e integrar pywebpush
 - **CORA**: Integração com certificados mTLS
 
