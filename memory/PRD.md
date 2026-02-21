@@ -163,7 +163,7 @@
 ## Próximos Passos
 
 ### P0 - Pendências de Banco de Dados
-- **Tabelas de Fidelidade**: Executar script `/app/scripts/loyalty_schema.sql` no Supabase SQL Editor para criar as tabelas `loyalty_members`, `loyalty_config`, `loyalty_tiers`, `loyalty_rewards`, `loyalty_transactions`
+- **Tabelas de Fidelidade**: Executar script `/app/scripts/loyalty_schema.sql` no Supabase SQL Editor
 
 ### P0 - App Mobile React Native
 - Criar projeto separado em React Native (conforme solicitado pelo usuário)
@@ -172,12 +172,14 @@
 ### P1 - Integrações Reais
 - **OTA Real Sync**: Obter credenciais de API de Booking.com, Expedia para conexão real
 - **Stripe Billing**: Configurar webhook de produção e chave de API real
+- **Push Notifications Real**: Gerar chaves VAPID próprias e integrar pywebpush
 - **CORA**: Integração com certificados mTLS
 
 ### P2 - Melhorias
-- Dashboard em tempo real com WebSockets
-- Notificações push
+- ~~Dashboard em tempo real com WebSockets~~ ✅ IMPLEMENTADO
+- ~~Notificações push~~ ✅ IMPLEMENTADO
 - ~~Exportação de relatórios CSV/JSON~~ ✅ IMPLEMENTADO
+- Persistir notificações e subscriptions no banco de dados (atualmente em memória)
 
 ---
 
