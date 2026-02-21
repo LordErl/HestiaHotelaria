@@ -1799,6 +1799,329 @@ Seja educado, elegante e prestativo. Fale em português brasileiro."""
         logger.error(f"Guest Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro no chat: {str(e)}")
 
+# ================== GUEST MOBILE APP ENDPOINTS ==================
+
+class GuestCodeAccess(BaseModel):
+    code: str
+
+class ServiceRequest(BaseModel):
+    hotel_id: str
+    guest_id: str
+    room_number: str
+    service_type: str
+    service_name: str
+    notes: Optional[str] = None
+    priority: str = "normal"
+
+@api_router.post("/guest-portal/access")
+async def guest_portal_access_by_code(data: GuestCodeAccess):
+    """Access guest portal with just reservation code (for mobile app)"""
+    code = data.code.strip().upper()
+    
+    res_result = supabase.table('reservations').select('*').eq('confirmation_code', code).execute()
+    if not res_result.data:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    
+    reservation = res_result.data[0]
+    guest_result = supabase.table('guests').select('*').eq('id', reservation['guest_id']).single().execute()
+    
+    if not guest_result.data:
+        raise HTTPException(status_code=404, detail="Hóspede não encontrado")
+    
+    guest = guest_result.data
+    
+    hotel_result = supabase.table('hotels').select('*').eq('id', reservation['hotel_id']).single().execute()
+    room_result = supabase.table('rooms').select('number').eq('id', reservation['room_id']).single().execute()
+    room_type_result = supabase.table('room_types').select('name').eq('id', reservation['room_type_id']).single().execute()
+    
+    check_in = datetime.strptime(reservation['check_in_date'], '%Y-%m-%d')
+    check_out = datetime.strptime(reservation['check_out_date'], '%Y-%m-%d')
+    nights = (check_out - check_in).days
+    
+    return {
+        "success": True,
+        "guest": {
+            "id": guest['id'],
+            "name": guest['name'],
+            "email": guest.get('email'),
+            "phone": guest.get('phone'),
+            "vip_status": guest.get('vip_status', False),
+            "total_stays": guest.get('total_stays', 0),
+            "loyalty_points": guest.get('loyalty_points', 0)
+        },
+        "reservation": {
+            "id": reservation['id'],
+            "hotel_id": reservation['hotel_id'],
+            "confirmation_code": reservation['confirmation_code'],
+            "check_in_date": reservation['check_in_date'],
+            "check_out_date": reservation['check_out_date'],
+            "status": reservation['status'],
+            "room_number": room_result.data['number'] if room_result.data else 'N/A',
+            "room_type": room_type_result.data['name'] if room_type_result.data else 'N/A',
+            "total_amount": reservation.get('total_amount', 0),
+            "paid_amount": reservation.get('paid_amount', 0),
+            "nights": nights,
+            "adults": reservation.get('adults', 1),
+            "children": reservation.get('children', 0)
+        },
+        "hotel": {
+            "id": hotel_result.data['id'] if hotel_result.data else None,
+            "name": hotel_result.data['name'] if hotel_result.data else 'Hotel',
+            "address": hotel_result.data.get('address', '') if hotel_result.data else '',
+            "phone": hotel_result.data.get('phone', '') if hotel_result.data else '',
+            "amenities": hotel_result.data.get('amenities', []) if hotel_result.data else []
+        }
+    }
+
+@api_router.get("/guest-portal/reservations/{guest_id}")
+async def get_guest_reservations(guest_id: str):
+    """Get all reservations for a guest"""
+    res_result = supabase.table('reservations').select('*').eq('guest_id', guest_id).order('check_in_date', desc=True).execute()
+    
+    reservations = []
+    for res in res_result.data:
+        room_result = supabase.table('rooms').select('number').eq('id', res['room_id']).execute()
+        room_type_result = supabase.table('room_types').select('name').eq('id', res['room_type_id']).execute()
+        hotel_result = supabase.table('hotels').select('name').eq('id', res['hotel_id']).execute()
+        
+        check_in = datetime.strptime(res['check_in_date'], '%Y-%m-%d')
+        check_out = datetime.strptime(res['check_out_date'], '%Y-%m-%d')
+        nights = (check_out - check_in).days
+        
+        reservations.append({
+            **res,
+            'room_number': room_result.data[0]['number'] if room_result.data else 'N/A',
+            'room_type': room_type_result.data[0]['name'] if room_type_result.data else 'N/A',
+            'hotel_name': hotel_result.data[0]['name'] if hotel_result.data else 'Hotel',
+            'nights': nights
+        })
+    
+    return reservations
+
+@api_router.post("/guest-portal/service-request")
+async def create_service_request(request: ServiceRequest):
+    """Create a service request from guest app"""
+    request_id = str(uuid.uuid4())
+    
+    request_data = {
+        'id': request_id,
+        'hotel_id': request.hotel_id,
+        'guest_id': request.guest_id,
+        'room_number': request.room_number,
+        'service_type': request.service_type,
+        'service_name': request.service_name,
+        'notes': request.notes,
+        'priority': request.priority,
+        'status': 'pending',
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    supabase.table('service_requests').insert(request_data).execute()
+    
+    return {"success": True, "request_id": request_id, "message": "Solicitação criada com sucesso"}
+
+@api_router.get("/guest-portal/requests/{guest_id}")
+async def get_guest_service_requests(guest_id: str):
+    """Get all service requests for a guest"""
+    try:
+        result = supabase.table('service_requests').select('*').eq('guest_id', guest_id).order('created_at', desc=True).execute()
+        return result.data
+    except Exception as e:
+        logger.warning(f"Service requests table may not exist: {e}")
+        return []
+
+@api_router.get("/guest-portal/services/{hotel_id}")
+async def get_hotel_services(hotel_id: str):
+    """Get available services for a hotel"""
+    return [
+        {"id": "room_service", "name": "Room Service", "description": "Refeições e bebidas no quarto", "available": "06:00 - 23:00", "icon": "restaurant"},
+        {"id": "spa", "name": "Spa & Bem-estar", "description": "Massagens, tratamentos e sauna", "available": "09:00 - 21:00", "icon": "sparkles"},
+        {"id": "concierge", "name": "Concierge", "description": "Reservas, tours e recomendações", "available": "24 horas", "icon": "chatbubble"},
+        {"id": "transport", "name": "Transporte", "description": "Táxi, transfer e aluguel", "available": "24 horas", "icon": "car"},
+        {"id": "laundry", "name": "Lavanderia", "description": "Lavagem e passadoria", "available": "07:00 - 20:00", "icon": "shirt"},
+        {"id": "maintenance", "name": "Manutenção", "description": "Reparos e solicitações técnicas", "available": "24 horas", "icon": "construct"},
+        {"id": "housekeeping", "name": "Arrumação", "description": "Limpeza e troca de roupas", "available": "08:00 - 18:00", "icon": "bed"},
+        {"id": "minibar", "name": "Minibar", "description": "Reposição de itens", "available": "24 horas", "icon": "wine"}
+    ]
+
+@api_router.get("/guest-portal/account/{guest_id}")
+async def get_guest_account(guest_id: str):
+    """Get guest account balance and transactions"""
+    guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    
+    if not guest_result.data:
+        raise HTTPException(status_code=404, detail="Hóspede não encontrado")
+    
+    guest = guest_result.data
+    
+    # Get reservations for charges
+    res_result = supabase.table('reservations').select('*').eq('guest_id', guest_id).execute()
+    
+    transactions = []
+    total_charges = 0
+    total_paid = 0
+    
+    for res in res_result.data:
+        amount = float(res.get('total_amount', 0))
+        paid = float(res.get('paid_amount', 0))
+        total_charges += amount
+        total_paid += paid
+        
+        transactions.append({
+            'id': res['id'],
+            'type': 'reservation',
+            'description': f"Reserva {res.get('confirmation_code', res['id'][:8])}",
+            'amount': amount,
+            'paid': paid,
+            'date': res.get('check_in_date'),
+            'status': res.get('payment_status', 'pending')
+        })
+    
+    return {
+        "guest": {
+            "id": guest['id'],
+            "name": guest['name'],
+            "email": guest.get('email'),
+            "vip_status": guest.get('vip_status', False),
+            "total_stays": guest.get('total_stays', 0),
+            "total_spent": guest.get('total_spent', 0)
+        },
+        "balance": {
+            "total_charges": total_charges,
+            "total_paid": total_paid,
+            "pending": total_charges - total_paid
+        },
+        "transactions": transactions
+    }
+
+@api_router.get("/guest-portal/loyalty/{guest_id}")
+async def get_guest_loyalty(guest_id: str, hotel_id: str):
+    """Get guest loyalty information"""
+    guest_result = supabase.table('guests').select('*').eq('id', guest_id).single().execute()
+    
+    if not guest_result.data:
+        raise HTTPException(status_code=404, detail="Hóspede não encontrado")
+    
+    guest = guest_result.data
+    
+    # Get loyalty config for hotel
+    config_result = supabase.table('loyalty_config').select('*').eq('hotel_id', hotel_id).single().execute()
+    
+    # Get member status
+    member_result = supabase.table('loyalty_members').select('*').eq('guest_id', guest_id).eq('hotel_id', hotel_id).execute()
+    
+    member = member_result.data[0] if member_result.data else None
+    
+    # Get available rewards
+    rewards_result = supabase.table('loyalty_rewards').select('*').eq('hotel_id', hotel_id).eq('is_active', True).execute()
+    
+    # Get tiers
+    tiers_result = supabase.table('loyalty_tiers').select('*').eq('hotel_id', hotel_id).order('min_points').execute()
+    
+    current_tier = 'Bronze'
+    points = 0
+    
+    if member:
+        points = member.get('points', 0)
+        current_tier = member.get('tier', 'Bronze')
+    
+    return {
+        "member": {
+            "guest_id": guest_id,
+            "points": points,
+            "tier": current_tier,
+            "total_points_earned": member.get('total_points_earned', 0) if member else 0,
+            "total_points_redeemed": member.get('total_points_redeemed', 0) if member else 0,
+            "member_since": member.get('created_at', None) if member else None
+        },
+        "tiers": tiers_result.data if tiers_result.data else [
+            {"name": "Bronze", "min_points": 0, "multiplier": 1.0, "color": "#CD7F32"},
+            {"name": "Silver", "min_points": 1000, "multiplier": 1.25, "color": "#C0C0C0"},
+            {"name": "Gold", "min_points": 5000, "multiplier": 1.5, "color": "#FFD700"},
+            {"name": "Platinum", "min_points": 15000, "multiplier": 2.0, "color": "#E5E4E2"}
+        ],
+        "rewards": rewards_result.data if rewards_result.data else [
+            {"id": "1", "name": "Diária Grátis", "points_required": 2500, "description": "Uma noite grátis no hotel"},
+            {"id": "2", "name": "Upgrade de Quarto", "points_required": 1000, "description": "Upgrade para categoria superior"},
+            {"id": "3", "name": "Spa 1h", "points_required": 800, "description": "Uma hora de spa gratuita"},
+            {"id": "4", "name": "Jantar para 2", "points_required": 1200, "description": "Jantar completo para duas pessoas"},
+            {"id": "5", "name": "Transfer Aeroporto", "points_required": 500, "description": "Transfer de ida ou volta ao aeroporto"}
+        ]
+    }
+
+@api_router.post("/guest-portal/booking")
+async def create_guest_booking(data: dict):
+    """Create a new reservation from guest app"""
+    guest_id = data.get('guest_id')
+    hotel_id = data.get('hotel_id')
+    room_type_id = data.get('room_type_id')
+    check_in = data.get('check_in_date')
+    check_out = data.get('check_out_date')
+    adults = data.get('adults', 1)
+    children = data.get('children', 0)
+    
+    # Find available room
+    rooms_result = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).eq('room_type_id', room_type_id).eq('status', 'available').execute()
+    
+    if not rooms_result.data:
+        raise HTTPException(status_code=400, detail="Nenhum quarto disponível para este tipo")
+    
+    # Check for overlapping reservations
+    overlapping = supabase.table('reservations').select('room_id').eq('hotel_id', hotel_id).in_('status', ['pending', 'confirmed', 'checked_in']).lt('check_in_date', check_out).gt('check_out_date', check_in).execute()
+    booked_room_ids = {r['room_id'] for r in overlapping.data}
+    
+    available_room = None
+    for room in rooms_result.data:
+        if room['id'] not in booked_room_ids:
+            available_room = room
+            break
+    
+    if not available_room:
+        raise HTTPException(status_code=400, detail="Nenhum quarto disponível para as datas selecionadas")
+    
+    # Get room type for pricing
+    room_type = supabase.table('room_types').select('*').eq('id', room_type_id).single().execute()
+    base_price = float(room_type.data.get('base_price', 0)) if room_type.data else 0
+    
+    check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+    check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+    nights = (check_out_date - check_in_date).days
+    total_amount = base_price * nights
+    
+    reservation_id = str(uuid.uuid4())
+    confirmation_code = f"HES{str(uuid.uuid4())[:6].upper()}"
+    
+    reservation = {
+        'id': reservation_id,
+        'hotel_id': hotel_id,
+        'guest_id': guest_id,
+        'room_id': available_room['id'],
+        'room_type_id': room_type_id,
+        'check_in_date': check_in,
+        'check_out_date': check_out,
+        'adults': adults,
+        'children': children,
+        'total_amount': total_amount,
+        'paid_amount': 0,
+        'status': 'pending',
+        'payment_status': 'pending',
+        'confirmation_code': confirmation_code,
+        'source': 'mobile_app',
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    supabase.table('reservations').insert(reservation).execute()
+    
+    return {
+        "success": True,
+        "reservation_id": reservation_id,
+        "confirmation_code": confirmation_code,
+        "total_amount": total_amount,
+        "nights": nights,
+        "room_number": available_room['number'],
+        "room_type": room_type.data['name'] if room_type.data else 'Standard'
+    }
+
 # ================== MARKETPLACE ==================
 
 class CartItem(BaseModel):
