@@ -18,10 +18,20 @@ export const useWebSocket = (hotelId, onMessage) => {
       ws.current.close();
     }
 
-    // Create WebSocket URL
-    const wsProtocol = API_URL.startsWith('https') ? 'wss' : 'ws';
-    const wsHost = API_URL.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}://${wsHost}/ws/dashboard/${hotelId}`;
+    // Create WebSocket URL - handle both local and production environments
+    let wsUrl;
+    try {
+      const apiUrl = new URL(API_URL);
+      const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${wsProtocol}//${apiUrl.host}/ws/dashboard/${hotelId}`;
+    } catch (e) {
+      // Fallback for relative URLs
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = API_URL.replace(/^https?:\/\//, '');
+      wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/${hotelId}`;
+    }
+
+    console.log('Connecting to WebSocket:', wsUrl);
 
     try {
       ws.current = new WebSocket(wsUrl);
