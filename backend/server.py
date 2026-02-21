@@ -3951,7 +3951,7 @@ async def websocket_dashboard(websocket: WebSocket, hotel_id: str):
                     
             except asyncio.TimeoutError:
                 # Send periodic update every 30 seconds
-                dashboard_data = await get_dashboard_stats(hotel_id)
+                dashboard_data = await get_realtime_dashboard_stats(hotel_id)
                 await ws_manager.send_personal({
                     "type": "dashboard_update",
                     "data": dashboard_data,
