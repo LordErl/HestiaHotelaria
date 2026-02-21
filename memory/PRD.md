@@ -206,6 +206,22 @@
   - POST /api/guest-portal/booking - Criar reserva
 - **Pendente**: Tabela service_requests no Supabase (script em `/app/scripts/service_requests_schema.sql`)
 
+### Iteration 12 - Staff Mobile App Backend (21/02/2026)
+- **Backend**: 17/17 testes passaram (100%)
+- **Novos Endpoints**:
+  - GET /api/check-in-out/checkins/{hotel_id} - Check-ins do dia
+  - GET /api/check-in-out/checkouts/{hotel_id} - Check-outs do dia
+  - POST /api/check-in-out/checkin/{id} - Realizar check-in
+  - POST /api/check-in-out/checkout/{id} - Realizar check-out
+  - GET /api/rooms/{hotel_id} - Listar quartos
+  - PATCH /api/rooms/{id}/status - Atualizar status do quarto
+  - GET /api/housekeeping/tasks/{hotel_id} - Tarefas housekeeping
+  - PATCH /api/housekeeping/tasks/{id} - Atualizar tarefa
+  - GET /api/guest-requests/{hotel_id} - Solicitações de hóspedes
+  - PATCH /api/guest-requests/{id} - Atualizar solicitação
+- **Bug Fix**: Corrigido erro 520 no login quando usuário não existe
+- **Pendente**: Tabela housekeeping_tasks no Supabase (script em `/app/scripts/housekeeping_tasks_schema.sql`)
+
 ### Iteration 9 - Backend + Frontend New Features (19/02/2026)
 - **Backend**: 10/10 testes passaram (100%)
 - **Features Validadas**:
@@ -235,14 +251,9 @@
 
 ## Próximos Passos
 
-### P0 - App Mobile Staff (React Native)
-- **Próxima Tarefa**: Desenvolver o App do Staff (HestiaStaffApp) em `/app/mobile/hestia-staff/`
-- **Telas a Implementar**: Login, Dashboard, Tasks, Housekeeping, Profile
-- Criar endpoints backend para suportar o app
-
 ### P0 - Pendências de Banco de Dados
-- **Tabelas de Fidelidade**: Executar script `/app/scripts/loyalty_schema.sql` no Supabase SQL Editor
 - **Tabela Service Requests**: Executar script `/app/scripts/service_requests_schema.sql` no Supabase SQL Editor
+- **Tabela Housekeeping Tasks**: Executar script `/app/scripts/housekeeping_tasks_schema.sql` no Supabase SQL Editor
 
 ### P1 - Stripe Billing (Cobrança Recorrente)
 - Implementar lógica de cobrança recorrente com Stripe Billing
