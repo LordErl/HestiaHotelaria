@@ -10,13 +10,14 @@ import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import TasksScreen from '../screens/TasksScreen';
+import HousekeepingScreen from '../screens/HousekeepingScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import CheckinsScreen from '../screens/CheckinsScreen';
+import CheckoutsScreen from '../screens/CheckoutsScreen';
+import RequestsScreen from '../screens/RequestsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
-// Placeholder screens
-const RoomsScreen = () => <DashboardScreen />;
-const NotificationsScreen = () => <DashboardScreen />;
 
 const TabNavigator = () => {
   return (
@@ -60,8 +61,8 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Rooms"
-        component={RoomsScreen}
+        name="Housekeeping"
+        component={HousekeepingScreen}
         options={{
           tabBarLabel: 'Quartos',
           tabBarIcon: ({ color, size }) => (
@@ -70,16 +71,36 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        name="Requests"
+        component={RequestsScreen}
         options={{
-          tabBarLabel: 'Alertas',
+          tabBarLabel: 'Solicitações',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={size} color={color} />
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const MainStackNavigator = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen name="Checkins" component={CheckinsScreen} />
+      <Stack.Screen name="Checkouts" component={CheckoutsScreen} />
+    </Stack.Navigator>
   );
 };
 
@@ -94,11 +115,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <>
-            <Stack.Screen name="Main" component={TabNavigator} />
-            <Stack.Screen name="Checkins" component={DashboardScreen} />
-            <Stack.Screen name="Checkouts" component={DashboardScreen} />
-          </>
+          <Stack.Screen name="Main" component={MainStackNavigator} />
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
