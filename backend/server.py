@@ -1896,9 +1896,30 @@ async def get_guest_reservations(guest_id: str):
     
     reservations = []
     for res in res_result.data:
-        room_result = supabase.table('rooms').select('number').eq('id', res['room_id']).execute()
-        room_type_result = supabase.table('room_types').select('name').eq('id', res['room_type_id']).execute()
-        hotel_result = supabase.table('hotels').select('name').eq('id', res['hotel_id']).execute()
+        room_number = 'N/A'
+        room_type_name = 'N/A'
+        hotel_name = 'Hotel'
+        
+        if res.get('room_id'):
+            try:
+                room_result = supabase.table('rooms').select('number').eq('id', res['room_id']).execute()
+                room_number = room_result.data[0]['number'] if room_result.data else 'N/A'
+            except:
+                pass
+        
+        if res.get('room_type_id'):
+            try:
+                room_type_result = supabase.table('room_types').select('name').eq('id', res['room_type_id']).execute()
+                room_type_name = room_type_result.data[0]['name'] if room_type_result.data else 'N/A'
+            except:
+                pass
+        
+        if res.get('hotel_id'):
+            try:
+                hotel_result = supabase.table('hotels').select('name').eq('id', res['hotel_id']).execute()
+                hotel_name = hotel_result.data[0]['name'] if hotel_result.data else 'Hotel'
+            except:
+                pass
         
         check_in = datetime.strptime(res['check_in_date'], '%Y-%m-%d')
         check_out = datetime.strptime(res['check_out_date'], '%Y-%m-%d')
@@ -1906,9 +1927,9 @@ async def get_guest_reservations(guest_id: str):
         
         reservations.append({
             **res,
-            'room_number': room_result.data[0]['number'] if room_result.data else 'N/A',
-            'room_type': room_type_result.data[0]['name'] if room_type_result.data else 'N/A',
-            'hotel_name': hotel_result.data[0]['name'] if hotel_result.data else 'Hotel',
+            'room_number': room_number,
+            'room_type': room_type_name,
+            'hotel_name': hotel_name,
             'nights': nights
         })
     
