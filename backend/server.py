@@ -274,7 +274,15 @@ async def login(credentials: UserLogin):
     token = create_access_token(user['id'], user['email'], user['role'])
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user['id'], email=user['email'], name=user['name'], role=user['role'], hotel_id=user.get('hotel_id'), is_active=user.get('is_active', True))
+        user=UserResponse(
+            id=user['id'], 
+            email=user['email'], 
+            name=user['name'], 
+            role=user['role'], 
+            hotel_id=user.get('hotel_id'), 
+            is_active=user.get('is_active', True),
+            is_platform_admin=user.get('is_platform_admin', False) or user['email'] == 'admin@hestia.com'
+        )
     )
 
 @api_router.get("/auth/me", response_model=UserResponse)
