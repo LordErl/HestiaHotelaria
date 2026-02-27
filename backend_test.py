@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class HestiaAPITester:
-    def __init__(self, base_url="https://itserpapi.duckdns.org/hestia"):
+    def __init__(self, base_url="https://hestiahotelaria-kw0j.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
