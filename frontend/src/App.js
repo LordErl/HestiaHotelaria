@@ -52,6 +52,7 @@ function AppRoutes() {
       <Route path="/booking" element={<BookingEnginePage />} />
       <Route path="/guest-portal" element={<GuestPortalPage />} />
       <Route path="/register-hotel" element={<HotelRegistrationPage />} />
+      <Route path="/guest-marketplace" element={<GuestMarketplacePage />} />
       
       <Route 
         path="/login" 
@@ -86,6 +87,7 @@ function AppRoutes() {
         <Route path="/mobile-guest" element={<MobileGuestPage />} />
         <Route path="/mobile-staff" element={<MobileStaffPage />} />
         <Route path="/platform-admin" element={<PlatformAdminPage />} />
+        <Route path="/revenue-b2b" element={<RevenueB2BPage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
