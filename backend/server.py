@@ -5217,8 +5217,7 @@ async def register_new_hotel(data: HotelRegistration):
         'role': 'admin',
         'hotel_id': hotel_id,
         'password_hash': hash_password(data.admin_password),
-        'is_active': True,
-        'is_platform_admin': False
+        'is_active': True
     }
     supabase.table('users').insert(user_dict).execute()
     
