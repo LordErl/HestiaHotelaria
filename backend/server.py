@@ -41,6 +41,9 @@ app = FastAPI(title="Hestia Hotel Management Platform")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Create a public router (no authentication required)
+public_router = APIRouter(prefix="/api")
+
 security = HTTPBearer()
 
 # Configure logging
