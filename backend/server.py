@@ -5114,11 +5114,14 @@ async def get_platform_users(current_user: dict = Depends(get_current_user)):
     if not is_platform_admin(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
     
-    users_result = supabase.table('users').select('id,name,email,role,hotel_id,is_active,created_at,is_platform_admin').order('created_at', desc=True).execute()
+    users_result = supabase.table('users').select('id,name,email,role,hotel_id,is_active,created_at').order('created_at', desc=True).execute()
     users = users_result.data or []
     
-    # Enriquecer com nome do hotel
+    # Enriquecer com nome do hotel e flag de platform admin
     for user in users:
+        # Check if platform admin based on email
+        user['is_platform_admin'] = user.get('email') == 'admin@hestia.com'
+        
         if user.get('hotel_id'):
             try:
                 hotel_result = supabase.table('hotels').select('name').eq('id', user['hotel_id']).single().execute()
