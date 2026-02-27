@@ -505,6 +505,10 @@ class HestiaAPITester:
         self.test_guest_portal_login()
         self.test_guest_portal_chat()
         
+        # Platform Admin APIs  
+        print("\n🏢 Testing Platform Admin APIs")
+        self.test_platform_admin_endpoints()
+        
         # Print summary
         print("\n" + "=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
