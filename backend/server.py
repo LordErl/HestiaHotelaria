@@ -294,8 +294,17 @@ async def create_hotel(hotel_data: HotelCreate, current_user: dict = Depends(get
 
 @api_router.get("/hotels")
 async def get_hotels(current_user: dict = Depends(get_current_user)):
-    result = supabase.table('hotels').select('*').execute()
-    return result.data
+    # Platform admin vê todos os hotéis
+    if current_user.get('is_platform_admin') or current_user.get('email') == 'admin@hestia.com':
+        result = supabase.table('hotels').select('*').execute()
+        return result.data
+    
+    # Hotel admin/staff vê apenas seu hotel
+    if current_user.get('hotel_id'):
+        result = supabase.table('hotels').select('*').eq('id', current_user['hotel_id']).execute()
+        return result.data
+    
+    return []
 
 @api_router.get("/hotels/{hotel_id}")
 async def get_hotel(hotel_id: str, current_user: dict = Depends(get_current_user)):
