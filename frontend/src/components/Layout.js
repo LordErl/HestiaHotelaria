@@ -15,7 +15,7 @@ const Layout = () => {
   // Register service worker for push notifications
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('/hestia/sw.js')
         .then(registration => {
           console.log('Service Worker registered:', registration.scope);
         })

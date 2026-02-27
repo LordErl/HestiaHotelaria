@@ -18,7 +18,7 @@ import RevenueManagementPage from './pages/RevenueManagementPage';
 import MarketplacePage from './pages/MarketplacePage';
 import OrdersHistoryPage from './pages/OrdersHistoryPage';
 import MarketplaceAdminPage from './pages/MarketplaceAdminPage';
-import OtaIntegrationPage from './pages/OtaIntegrationPage';
+import OtaIntegrationPage from './pages/OTAIntegrationPage';
 import HrManagementPage from './pages/HrManagementPage';
 import EventsManagementPage from './pages/EventsManagementPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
@@ -88,7 +88,7 @@ function AppRoutes() {
 function App() {
   return (
     <div className="App dark">
-      <BrowserRouter>
+      <BrowserRouter basename="/hestia">
         <AuthProvider>
           <AppRoutes />
           <Toaster 

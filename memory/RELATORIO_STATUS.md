@@ -59,7 +59,7 @@ Hestia é uma **plataforma unificada de gestão hoteleira** que vai além do PMS
 | Frontend | ✅ | React 19 + Tailwind + Shadcn |
 | Banco de Dados | ✅ | Supabase PostgreSQL |
 | Autenticação | ✅ | JWT personalizado |
-| IA | ✅ | Gemini via Emergent Integrations |
+| IA | ✅ | Gemini via ITsERP Integrations |
 
 ---
 

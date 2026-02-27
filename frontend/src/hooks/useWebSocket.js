@@ -23,11 +23,13 @@ export const useWebSocket = (hotelId, onMessage) => {
     try {
       const apiUrl = new URL(API_URL);
       const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-      wsUrl = `${wsProtocol}//${apiUrl.host}/ws/dashboard/${hotelId}`;
+      // Extract basepath from API URL (e.g., /hestia/api -> /hestia)
+      const basePath = apiUrl.pathname.replace(/\/api\/?$/, '');
+      wsUrl = `${wsProtocol}//${apiUrl.host}${basePath}/ws/dashboard/${hotelId}`;
     } catch (e) {
       // Fallback for relative URLs
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = API_URL.replace(/^https?:\/\//, '');
+      const wsHost = API_URL.replace(/^https?:\/\//, '').replace(/\/api\/?$/, '');
       wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/${hotelId}`;
     }
 

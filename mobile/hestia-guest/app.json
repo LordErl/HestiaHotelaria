@@ -38,7 +38,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://guest-app-preview.preview.emergentagent.com/api"
+      "apiUrl": "https://itserpapi.duckdns.org/hestia/api"
     }
   }
 }

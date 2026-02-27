@@ -1036,7 +1036,7 @@ async def get_pricing_suggestions(hotel_id: str, current_user: dict = Depends(ge
 async def chat_with_ai(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
-    api_key = os.environ.get('EMERGENT_LLM_KEY')
+    api_key = os.environ.get('GEMINI_API_PAID_KEY') or os.environ.get('EMERGENT_LLM_KEY')
     session_id = request.session_id or str(uuid.uuid4())
     
     if request.agent_type == "hestia":
@@ -1784,7 +1784,7 @@ async def guest_portal_login(credentials: GuestPortalLogin):
 async def guest_portal_chat(request: GuestChatRequest):
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
-    api_key = os.environ.get('EMERGENT_LLM_KEY')
+    api_key = os.environ.get('GEMINI_API_PAID_KEY') or os.environ.get('EMERGENT_LLM_KEY')
     session_id = request.session_id or str(uuid.uuid4())
     
     system_message = """Você é o Jarbas, um mordomo digital elegante e acolhedor.
