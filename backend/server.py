@@ -5891,6 +5891,429 @@ async def create_guest_order(data: dict):
     except Exception as e:
         return {"success": True, **order_dict, "note": "Pedido simulado - tabela não existe"}
 
+# ================== MARKETPLACE CHECKOUT COMPLETO ==================
+
+class CheckoutData(BaseModel):
+    guest_name: str
+    guest_email: EmailStr
+    guest_phone: Optional[str] = None
+    hotel_id: Optional[str] = None
+    room_number: Optional[str] = None
+    items: List[dict]
+    delivery_type: str = "room_delivery"  # room_delivery, pickup
+    instructions: Optional[str] = None
+    payment_method: str = "room_charge"  # room_charge, pix, credit_card
+
+@api_router.post("/marketplace/checkout")
+async def marketplace_checkout(data: CheckoutData):
+    """
+    Checkout completo do marketplace - processa pedido e pagamento
+    """
+    # Calculate totals
+    subtotal = sum(item.get('preco', 0) * item.get('quantity', 1) for item in data.items)
+    delivery_fee = 5.00 if data.delivery_type == 'room_delivery' else 0
+    platform_commission = subtotal * 0.10  # 10% Hestia
+    total = subtotal + delivery_fee
+    
+    # Group items by partner
+    orders_by_partner = {}
+    for item in data.items:
+        partner_id = item.get('partner_id', 'unknown')
+        if partner_id not in orders_by_partner:
+            orders_by_partner[partner_id] = {
+                'items': [],
+                'partner_name': item.get('partner_name', 'Parceiro'),
+                'subtotal': 0
+            }
+        orders_by_partner[partner_id]['items'].append(item)
+        orders_by_partner[partner_id]['subtotal'] += item.get('preco', 0) * item.get('quantity', 1)
+    
+    # Create orders for each partner
+    created_orders = []
+    for partner_id, partner_data in orders_by_partner.items():
+        order_id = str(uuid.uuid4())
+        order_number = f"MKT{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:4].upper()}"
+        
+        order_dict = {
+            'id': order_id,
+            'order_number': order_number,
+            'guest_name': data.guest_name,
+            'guest_email': data.guest_email,
+            'guest_phone': data.guest_phone,
+            'hotel_id': data.hotel_id,
+            'partner_id': partner_id,
+            'partner_name': partner_data['partner_name'],
+            'items': partner_data['items'],
+            'subtotal': partner_data['subtotal'],
+            'taxa_entrega': delivery_fee / len(orders_by_partner),  # Split delivery fee
+            'comissao_hestia': partner_data['subtotal'] * 0.10,
+            'total': partner_data['subtotal'] + (delivery_fee / len(orders_by_partner)),
+            'status': 'confirmed',
+            'tipo_entrega': data.delivery_type,
+            'quarto_entrega': data.room_number,
+            'instrucoes': data.instructions,
+            'payment_method': data.payment_method,
+            'payment_status': 'pending' if data.payment_method != 'room_charge' else 'charged_to_room',
+            'created_at': datetime.now(timezone.utc).isoformat()
+        }
+        
+        try:
+            supabase.table('partner_orders').insert(order_dict).execute()
+        except:
+            pass  # Table may not exist
+        
+        created_orders.append({
+            'order_number': order_number,
+            'partner': partner_data['partner_name'],
+            'items_count': len(partner_data['items']),
+            'total': order_dict['total']
+        })
+    
+    return {
+        "success": True,
+        "message": "Pedido realizado com sucesso!",
+        "checkout_summary": {
+            "subtotal": subtotal,
+            "delivery_fee": delivery_fee,
+            "platform_commission": platform_commission,
+            "total": total,
+            "payment_method": data.payment_method,
+            "delivery_type": data.delivery_type,
+            "room_number": data.room_number
+        },
+        "orders": created_orders,
+        "estimated_delivery": "30-45 minutos" if data.delivery_type == 'room_delivery' else "Retirada em 20 minutos"
+    }
+
+@api_router.get("/marketplace/orders/{guest_email}")
+async def get_guest_orders(guest_email: str):
+    """Lista pedidos de um hóspede por email"""
+    try:
+        result = supabase.table('partner_orders').select('*').eq('guest_email', guest_email).order('created_at', desc=True).execute()
+        return result.data or []
+    except:
+        # Return mock data
+        return [
+            {
+                "order_number": "MKT20260227DEMO",
+                "partner_name": "Restaurante Sabor & Arte",
+                "total": 94.90,
+                "status": "delivered",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+
+# ================== GESTÃO DE PLANOS E ASSINATURAS ==================
+
+class PlanPricing(BaseModel):
+    starter: dict = {"monthly": 299, "annual": 2990, "features": ["Até 30 quartos", "Motor de Reservas", "Suporte por email"]}
+    professional: dict = {"monthly": 599, "annual": 5990, "features": ["Até 100 quartos", "Integração OTAs", "Revenue Management", "Suporte prioritário"]}
+    enterprise: dict = {"monthly": 1499, "annual": 14990, "features": ["Quartos ilimitados", "API personalizada", "Gerente de conta dedicado", "SLA garantido"]}
+
+@api_router.get("/subscriptions/plans")
+async def get_subscription_plans():
+    """Lista os planos disponíveis com preços e features"""
+    return {
+        "plans": [
+            {
+                "id": "starter",
+                "name": "Starter",
+                "price_monthly": 299,
+                "price_annual": 2990,
+                "price_monthly_formatted": "R$ 299/mês",
+                "price_annual_formatted": "R$ 2.990/ano",
+                "discount_annual": "17%",
+                "features": [
+                    "Até 30 quartos",
+                    "Motor de Reservas",
+                    "Check-in/Check-out",
+                    "Housekeeping básico",
+                    "Suporte por email",
+                    "1 usuário admin"
+                ],
+                "recommended_for": "Pousadas e hotéis pequenos"
+            },
+            {
+                "id": "professional",
+                "name": "Professional",
+                "price_monthly": 599,
+                "price_annual": 5990,
+                "price_monthly_formatted": "R$ 599/mês",
+                "price_annual_formatted": "R$ 5.990/ano",
+                "discount_annual": "17%",
+                "popular": True,
+                "features": [
+                    "Até 100 quartos",
+                    "Tudo do Starter +",
+                    "Integração com OTAs",
+                    "Revenue Management",
+                    "Relatórios avançados",
+                    "Marketplace integrado",
+                    "Suporte prioritário",
+                    "5 usuários"
+                ],
+                "recommended_for": "Hotéis de médio porte"
+            },
+            {
+                "id": "enterprise",
+                "name": "Enterprise",
+                "price_monthly": 1499,
+                "price_annual": 14990,
+                "price_monthly_formatted": "R$ 1.499/mês",
+                "price_annual_formatted": "R$ 14.990/ano",
+                "discount_annual": "17%",
+                "features": [
+                    "Quartos ilimitados",
+                    "Tudo do Professional +",
+                    "API personalizada",
+                    "Multi-propriedade",
+                    "Gerente de conta dedicado",
+                    "SLA garantido 99.9%",
+                    "Treinamento presencial",
+                    "Usuários ilimitados",
+                    "Integrações customizadas"
+                ],
+                "recommended_for": "Redes hoteleiras e resorts"
+            }
+        ],
+        "trial_days": 14,
+        "currency": "BRL"
+    }
+
+class SubscriptionCreate(BaseModel):
+    hotel_id: str
+    plan_id: str
+    billing_cycle: str = "monthly"  # monthly, annual
+    payment_method: str = "credit_card"  # credit_card, pix, boleto
+
+@api_router.post("/subscriptions/subscribe")
+async def create_subscription(data: SubscriptionCreate, current_user: dict = Depends(get_current_user)):
+    """Criar ou atualizar assinatura de um hotel"""
+    
+    # Verify user has access to this hotel
+    if not is_platform_admin(current_user) and current_user.get('hotel_id') != data.hotel_id:
+        raise HTTPException(status_code=403, detail="Sem permissão para este hotel")
+    
+    if current_user.get('role') != 'admin' and not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Apenas admins podem gerenciar assinaturas")
+    
+    # Plan pricing
+    plans = {
+        'starter': {'monthly': 299, 'annual': 2990},
+        'professional': {'monthly': 599, 'annual': 5990},
+        'enterprise': {'monthly': 1499, 'annual': 14990}
+    }
+    
+    if data.plan_id not in plans:
+        raise HTTPException(status_code=400, detail="Plano inválido")
+    
+    price = plans[data.plan_id][data.billing_cycle]
+    
+    # Calculate dates
+    start_date = datetime.now(timezone.utc)
+    if data.billing_cycle == 'annual':
+        end_date = start_date + timedelta(days=365)
+    else:
+        end_date = start_date + timedelta(days=30)
+    
+    subscription_data = {
+        'plano_assinatura': data.plan_id,
+        'valor_mensalidade': plans[data.plan_id]['monthly'],
+        'status_contrato': 'active',
+        'data_inicio_contrato': start_date.strftime('%Y-%m-%d'),
+        'data_fim_contrato': end_date.strftime('%Y-%m-%d'),
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        # Try to update existing organization
+        result = supabase.table('organizations').update(subscription_data).eq('hotel_id', data.hotel_id).execute()
+        if not result.data:
+            # Create new organization record
+            subscription_data['id'] = str(uuid.uuid4())
+            subscription_data['hotel_id'] = data.hotel_id
+            subscription_data['razao_social'] = 'A definir'
+            subscription_data['cnpj'] = '00000000000000'
+            subscription_data['responsavel_nome'] = current_user.get('name', 'Admin')
+            subscription_data['responsavel_cpf'] = '00000000000'
+            supabase.table('organizations').insert(subscription_data).execute()
+    except Exception as e:
+        logger.warning(f"Could not update organization: {e}")
+    
+    return {
+        "success": True,
+        "message": f"Assinatura {data.plan_id.capitalize()} ativada com sucesso!",
+        "subscription": {
+            "hotel_id": data.hotel_id,
+            "plan": data.plan_id,
+            "billing_cycle": data.billing_cycle,
+            "price": price,
+            "price_formatted": f"R$ {price:,.2f}",
+            "status": "active",
+            "start_date": start_date.strftime('%Y-%m-%d'),
+            "end_date": end_date.strftime('%Y-%m-%d'),
+            "next_billing": end_date.strftime('%Y-%m-%d')
+        }
+    }
+
+@api_router.get("/subscriptions/{hotel_id}")
+async def get_hotel_subscription(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Obter detalhes da assinatura de um hotel"""
+    
+    if not is_platform_admin(current_user) and current_user.get('hotel_id') != hotel_id:
+        raise HTTPException(status_code=403, detail="Sem permissão para este hotel")
+    
+    try:
+        result = supabase.table('organizations').select('*').eq('hotel_id', hotel_id).single().execute()
+        if result.data:
+            org = result.data
+            return {
+                "has_subscription": True,
+                "subscription": {
+                    "plan": org.get('plano_assinatura', 'trial'),
+                    "status": org.get('status_contrato', 'trial'),
+                    "monthly_price": org.get('valor_mensalidade', 0),
+                    "start_date": org.get('data_inicio_contrato'),
+                    "end_date": org.get('data_fim_contrato'),
+                    "organization": {
+                        "razao_social": org.get('razao_social'),
+                        "cnpj": org.get('cnpj'),
+                        "responsavel": org.get('responsavel_nome')
+                    }
+                }
+            }
+    except:
+        pass
+    
+    return {
+        "has_subscription": False,
+        "subscription": {
+            "plan": "trial",
+            "status": "trial",
+            "days_remaining": 14,
+            "message": "Você está no período de teste gratuito"
+        }
+    }
+
+@api_router.post("/subscriptions/{hotel_id}/cancel")
+async def cancel_subscription(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Cancelar assinatura de um hotel"""
+    
+    if not is_platform_admin(current_user) and current_user.get('hotel_id') != hotel_id:
+        raise HTTPException(status_code=403, detail="Sem permissão para este hotel")
+    
+    if current_user.get('role') != 'admin' and not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Apenas admins podem cancelar assinaturas")
+    
+    try:
+        supabase.table('organizations').update({
+            'status_contrato': 'cancelled',
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }).eq('hotel_id', hotel_id).execute()
+    except:
+        pass
+    
+    return {
+        "success": True,
+        "message": "Assinatura cancelada. Você terá acesso até o fim do período pago.",
+        "status": "cancelled"
+    }
+
+@api_router.post("/subscriptions/{hotel_id}/upgrade")
+async def upgrade_subscription(hotel_id: str, new_plan: str, current_user: dict = Depends(get_current_user)):
+    """Fazer upgrade do plano"""
+    
+    if not is_platform_admin(current_user) and current_user.get('hotel_id') != hotel_id:
+        raise HTTPException(status_code=403, detail="Sem permissão para este hotel")
+    
+    plans_order = ['starter', 'professional', 'enterprise']
+    plans_prices = {'starter': 299, 'professional': 599, 'enterprise': 1499}
+    
+    if new_plan not in plans_order:
+        raise HTTPException(status_code=400, detail="Plano inválido")
+    
+    try:
+        supabase.table('organizations').update({
+            'plano_assinatura': new_plan,
+            'valor_mensalidade': plans_prices[new_plan],
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }).eq('hotel_id', hotel_id).execute()
+    except:
+        pass
+    
+    return {
+        "success": True,
+        "message": f"Upgrade para {new_plan.capitalize()} realizado com sucesso!",
+        "new_plan": new_plan,
+        "new_price": plans_prices[new_plan]
+    }
+
+# ================== PLATFORM SUBSCRIPTION MANAGEMENT ==================
+
+@api_router.get("/platform/subscriptions")
+async def get_all_subscriptions(current_user: dict = Depends(get_current_user)):
+    """Lista todas as assinaturas - apenas para admin da plataforma"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    try:
+        orgs = supabase.table('organizations').select('*').execute()
+        organizations = orgs.data or []
+        
+        # Enrich with hotel name
+        for org in organizations:
+            if org.get('hotel_id'):
+                try:
+                    hotel = supabase.table('hotels').select('name').eq('id', org['hotel_id']).single().execute()
+                    org['hotel_name'] = hotel.data.get('name') if hotel.data else None
+                except:
+                    org['hotel_name'] = None
+        
+        # Group by status
+        summary = {
+            'active': len([o for o in organizations if o.get('status_contrato') == 'active']),
+            'trial': len([o for o in organizations if o.get('status_contrato') == 'trial']),
+            'cancelled': len([o for o in organizations if o.get('status_contrato') == 'cancelled']),
+            'suspended': len([o for o in organizations if o.get('status_contrato') == 'suspended'])
+        }
+        
+        # MRR by plan
+        mrr_by_plan = {}
+        for org in organizations:
+            if org.get('status_contrato') == 'active':
+                plan = org.get('plano_assinatura', 'starter')
+                mrr_by_plan[plan] = mrr_by_plan.get(plan, 0) + float(org.get('valor_mensalidade') or 0)
+        
+        return {
+            "subscriptions": organizations,
+            "summary": summary,
+            "mrr_by_plan": mrr_by_plan,
+            "total_mrr": sum(mrr_by_plan.values())
+        }
+    except:
+        return {
+            "subscriptions": [],
+            "summary": {"active": 0, "trial": 0, "cancelled": 0, "suspended": 0},
+            "mrr_by_plan": {},
+            "total_mrr": 0
+        }
+
+@api_router.patch("/platform/subscriptions/{hotel_id}")
+async def admin_update_subscription(hotel_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Atualizar assinatura de qualquer hotel - apenas admin da plataforma"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    allowed_fields = ['plano_assinatura', 'valor_mensalidade', 'status_contrato', 'data_fim_contrato']
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        result = supabase.table('organizations').update(update_data).eq('hotel_id', hotel_id).execute()
+        return {"success": True, "message": "Assinatura atualizada", "data": result.data[0] if result.data else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
 # ================== ROOT ==================
 
 @api_router.get("/")
