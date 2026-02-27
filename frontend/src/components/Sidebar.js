@@ -79,6 +79,7 @@ const Sidebar = () => {
   // Items exclusivos para admin da plataforma
   const platformAdminItems = [
     { to: '/platform-admin', icon: Building2, label: 'Admin Hestia', highlight: true },
+    { to: '/revenue-b2b', icon: TrendingUp, label: 'Receita B2B', highlight: true },
   ];
 
   // Combina os items baseado no tipo de usuário
