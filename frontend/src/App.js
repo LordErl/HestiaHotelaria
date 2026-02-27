@@ -29,6 +29,8 @@ import MobileStaffPage from './pages/MobileStaffPage';
 import PlatformAdminPage from './pages/PlatformAdminPage';
 import HotelRegistrationPage from './pages/HotelRegistrationPage';
 import MaintenancePage from './pages/MaintenancePage';
+import RevenueB2BPage from './pages/RevenueB2BPage';
+import GuestMarketplacePage from './pages/GuestMarketplacePage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
