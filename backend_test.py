@@ -848,6 +848,7 @@ class HestiaAPITester:
             200
         )
         
+        notifications = []
         if success1:
             notifications = notifications_response if isinstance(notifications_response, list) else []
             print(f"✅ Found {len(notifications)} notifications")
@@ -863,7 +864,7 @@ class HestiaAPITester:
         )
         
         if success2:
-            unread_count = count_response.get('unread_count', 0)
+            unread_count = count_response.get('unread_count', 0) if isinstance(count_response, dict) else 0
             print(f"✅ Unread notifications: {unread_count}")
         
         # Test 3: Mark all as read
