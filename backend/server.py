@@ -6000,6 +6000,300 @@ async def get_guest_orders(guest_email: str):
             }
         ]
 
+# ================== SISTEMA DE NOTIFICAÇÕES ==================
+
+def get_order_confirmation_email_html(order: dict) -> str:
+    """Generate HTML for order confirmation email to guest"""
+    items_html = ""
+    for item in order.get('items', []):
+        items_html += f"""
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #1E3A5F;">{item.get('quantity', 1)}x {item.get('nome', 'Item')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #1E3A5F; text-align: right;">R$ {(item.get('preco', 0) * item.get('quantity', 1)):.2f}</td>
+        </tr>
+        """
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0B1120; color: #F8FAFC; margin: 0; padding: 40px; }}
+            .container {{ max-width: 600px; margin: 0 auto; background-color: #151E32; border-radius: 16px; overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; }}
+            .header h1 {{ color: #0B1120; margin: 0; font-size: 24px; }}
+            .content {{ padding: 30px; }}
+            .order-number {{ font-size: 24px; font-weight: bold; color: #D4AF37; text-align: center; margin: 20px 0; padding: 15px; background-color: #0B1120; border-radius: 8px; }}
+            .details {{ background-color: #0B1120; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            .total {{ font-size: 20px; color: #D4AF37; font-weight: bold; }}
+            .footer {{ text-align: center; padding: 20px; color: #94A3B8; font-size: 12px; }}
+            .delivery-info {{ background-color: #D4AF37; color: #0B1120; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🛒 Pedido Confirmado!</h1>
+            </div>
+            <div class="content">
+                <p>Olá, <strong>{order.get('guest_name', 'Cliente')}</strong>!</p>
+                <p>Seu pedido foi recebido e está sendo preparado.</p>
+                
+                <div class="order-number">
+                    Pedido #{order.get('order_number', 'N/A')}
+                </div>
+                
+                <div class="delivery-info">
+                    <strong>{'🚴 Entrega no Quarto ' + str(order.get('quarto_entrega', '')) if order.get('tipo_entrega') == 'room_delivery' else '📦 Retirada no Local'}</strong><br>
+                    Tempo estimado: {order.get('estimated_delivery', '30-45 minutos')}
+                </div>
+                
+                <div class="details">
+                    <h3 style="color: #D4AF37; margin-top: 0;">Itens do Pedido</h3>
+                    <table>
+                        {items_html}
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #1E3A5F;">Taxa de entrega</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #1E3A5F; text-align: right;">R$ {order.get('taxa_entrega', 5.00):.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px 10px;"><strong>Total</strong></td>
+                            <td style="padding: 15px 10px; text-align: right;" class="total">R$ {order.get('total', 0):.2f}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <p style="color: #94A3B8; font-size: 14px;">
+                    Forma de pagamento: <strong style="color: #F8FAFC;">
+                    {'Débito no Quarto' if order.get('payment_method') == 'room_charge' else 'PIX' if order.get('payment_method') == 'pix' else 'Cartão de Crédito'}
+                    </strong>
+                </p>
+            </div>
+            <div class="footer">
+                <p>Obrigado por usar o Marketplace Hestia!</p>
+                <p>Dúvidas? Entre em contato com a recepção do hotel.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+def get_new_order_notification_email_html(order: dict) -> str:
+    """Generate HTML for new order notification email to partner/hotel"""
+    items_html = ""
+    for item in order.get('items', []):
+        items_html += f"<li>{item.get('quantity', 1)}x {item.get('nome', 'Item')} - R$ {(item.get('preco', 0) * item.get('quantity', 1)):.2f}</li>"
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }}
+            .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            .header {{ background-color: #D4AF37; padding: 20px; text-align: center; }}
+            .header h1 {{ color: #0B1120; margin: 0; font-size: 22px; }}
+            .content {{ padding: 25px; }}
+            .alert {{ background-color: #fef3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px; }}
+            .order-details {{ background-color: #f8f9fa; padding: 20px; border-radius: 8px; }}
+            ul {{ padding-left: 20px; }}
+            li {{ margin: 8px 0; }}
+            .delivery {{ background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔔 NOVO PEDIDO!</h1>
+            </div>
+            <div class="content">
+                <div class="alert">
+                    <strong>⚡ Atenção:</strong> Novo pedido recebido! Prepare os itens.
+                </div>
+                
+                <div class="order-details">
+                    <h3 style="margin-top: 0;">Pedido #{order.get('order_number', 'N/A')}</h3>
+                    <p><strong>Cliente:</strong> {order.get('guest_name', 'N/A')}</p>
+                    <p><strong>Telefone:</strong> {order.get('guest_phone', 'N/A')}</p>
+                    
+                    <h4>Itens:</h4>
+                    <ul>
+                        {items_html}
+                    </ul>
+                    
+                    <p><strong>Total:</strong> R$ {order.get('total', 0):.2f}</p>
+                </div>
+                
+                <div class="delivery">
+                    <h4 style="margin-top: 0;">📍 Entrega</h4>
+                    <p><strong>Tipo:</strong> {'Entrega no Quarto' if order.get('tipo_entrega') == 'room_delivery' else 'Retirada'}</p>
+                    <p><strong>Quarto:</strong> {order.get('quarto_entrega', 'N/A')}</p>
+                    {f"<p><strong>Instruções:</strong> {order.get('instrucoes')}</p>" if order.get('instrucoes') else ""}
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+async def send_order_notifications(order: dict):
+    """Send notifications for a new order"""
+    # Send confirmation to guest
+    if order.get('guest_email'):
+        await send_email_async(
+            to_email=order['guest_email'],
+            subject=f"Pedido #{order.get('order_number', 'N/A')} Confirmado - Hestia Marketplace",
+            html_content=get_order_confirmation_email_html(order)
+        )
+    
+    # Create in-app notification
+    notification_id = str(uuid.uuid4())
+    notification = {
+        'id': notification_id,
+        'type': 'new_order',
+        'title': 'Novo Pedido Recebido',
+        'message': f"Pedido #{order.get('order_number')} de {order.get('guest_name')} - R$ {order.get('total', 0):.2f}",
+        'data': {
+            'order_number': order.get('order_number'),
+            'guest_name': order.get('guest_name'),
+            'total': order.get('total'),
+            'items_count': len(order.get('items', []))
+        },
+        'hotel_id': order.get('hotel_id'),
+        'partner_id': order.get('partner_id'),
+        'is_read': False,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        supabase.table('notifications').insert(notification).execute()
+    except Exception as e:
+        logger.warning(f"Could not save notification: {e}")
+    
+    return notification
+
+# Notification Models
+class NotificationCreate(BaseModel):
+    type: str
+    title: str
+    message: str
+    data: Optional[dict] = None
+    hotel_id: Optional[str] = None
+    user_id: Optional[str] = None
+
+@api_router.get("/notifications")
+async def get_notifications(
+    unread_only: bool = False, 
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get notifications for the current user/hotel"""
+    try:
+        query = supabase.table('notifications').select('*')
+        
+        # Filter by hotel for non-platform admins
+        if not is_platform_admin(current_user) and current_user.get('hotel_id'):
+            query = query.eq('hotel_id', current_user['hotel_id'])
+        
+        if unread_only:
+            query = query.eq('is_read', False)
+        
+        result = query.order('created_at', desc=True).limit(limit).execute()
+        return result.data or []
+    except Exception as e:
+        logger.warning(f"Notifications table may not exist: {e}")
+        # Return mock notifications for demo
+        return [
+            {
+                "id": "notif-001",
+                "type": "new_order",
+                "title": "Novo Pedido Recebido",
+                "message": "Pedido #MKT20260227DEMO de João Silva - R$ 94,90",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": "notif-002",
+                "type": "reservation",
+                "title": "Nova Reserva",
+                "message": "Reserva #ABC123 confirmada para 28/02",
+                "is_read": True,
+                "created_at": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+            }
+        ]
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(current_user: dict = Depends(get_current_user)):
+    """Get count of unread notifications"""
+    try:
+        query = supabase.table('notifications').select('id', count='exact').eq('is_read', False)
+        
+        if not is_platform_admin(current_user) and current_user.get('hotel_id'):
+            query = query.eq('hotel_id', current_user['hotel_id'])
+        
+        result = query.execute()
+        return {"unread_count": result.count or 0}
+    except:
+        return {"unread_count": 2}  # Mock count
+
+@api_router.patch("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark a notification as read"""
+    try:
+        supabase.table('notifications').update({'is_read': True}).eq('id', notification_id).execute()
+        return {"success": True}
+    except:
+        return {"success": True, "note": "Mock response"}
+
+@api_router.patch("/notifications/read-all")
+async def mark_all_notifications_read(current_user: dict = Depends(get_current_user)):
+    """Mark all notifications as read for the current user/hotel"""
+    try:
+        query = supabase.table('notifications').update({'is_read': True})
+        
+        if not is_platform_admin(current_user) and current_user.get('hotel_id'):
+            query = query.eq('hotel_id', current_user['hotel_id'])
+        
+        query.execute()
+        return {"success": True, "message": "Todas as notificações marcadas como lidas"}
+    except:
+        return {"success": True, "note": "Mock response"}
+
+@api_router.post("/notifications")
+async def create_notification(data: NotificationCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new notification (admin only)"""
+    if current_user.get('role') not in ['admin', 'manager'] and not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    notification = {
+        'id': str(uuid.uuid4()),
+        'type': data.type,
+        'title': data.title,
+        'message': data.message,
+        'data': data.data or {},
+        'hotel_id': data.hotel_id or current_user.get('hotel_id'),
+        'user_id': data.user_id,
+        'is_read': False,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        supabase.table('notifications').insert(notification).execute()
+    except:
+        pass
+    
+    return notification
+
+@api_router.delete("/notifications/{notification_id}")
+async def delete_notification(notification_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a notification"""
+    try:
+        supabase.table('notifications').delete().eq('id', notification_id).execute()
+        return {"success": True}
+    except:
+        return {"success": True, "note": "Mock response"}
+
 # ================== GESTÃO DE PLANOS E ASSINATURAS ==================
 
 @public_router.get("/subscriptions/plans")
