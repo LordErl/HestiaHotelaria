@@ -125,13 +125,17 @@ const Sidebar = () => {
             to={item.to}
             className={({ isActive }) => `
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
-              ${isActive 
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20' 
-                : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-white/5'
+              ${item.highlight 
+                ? isActive 
+                  ? 'bg-gold/20 text-gold border border-gold/30' 
+                  : 'bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20'
+                : isActive 
+                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20' 
+                  : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-white/5'
               }
               ${collapsed ? 'justify-center px-2' : ''}
             `}
-            data-testid={`nav-${item.label.toLowerCase().replace(/\//g, '-')}`}
+            data-testid={`nav-${item.label.toLowerCase().replace(/\//g, '-').replace(/\s/g, '-')}`}
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
