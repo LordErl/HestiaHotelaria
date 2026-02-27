@@ -644,6 +644,232 @@ class HestiaAPITester:
         
         return all(isolation_results)
 
+    def test_subscription_plans_public(self) -> bool:
+        """Test GET /api/subscriptions/plans (public, no auth required)"""
+        print("\n=== Testing Subscription Plans (Public) ===")
+        
+        success, response = self.run_test(
+            "Get Subscription Plans", 
+            "GET", 
+            "subscriptions/plans", 
+            200
+        )
+        
+        if success:
+            plans = response.get('plans', [])
+            if len(plans) >= 3:
+                print(f"✅ Found {len(plans)} subscription plans")
+                # Check if plans have required fields
+                for plan in plans:
+                    required_fields = ['id', 'name', 'price_monthly', 'features']
+                    missing_fields = [f for f in required_fields if f not in plan]
+                    if missing_fields:
+                        print(f"⚠️  Plan {plan.get('name', 'Unknown')} missing fields: {missing_fields}")
+                    else:
+                        print(f"✅ Plan {plan['name']}: R$ {plan['price_monthly']}/mês")
+                return True
+            else:
+                print(f"⚠️  Expected at least 3 plans, got {len(plans)}")
+        
+        self.log_test("Subscription Plans (Public)", success, "Failed to get subscription plans" if not success else "")
+        return success
+
+    def test_marketplace_checkout(self) -> bool:
+        """Test POST /api/marketplace/checkout (marketplace checkout functionality)"""
+        print("\n=== Testing Marketplace Checkout ===")
+        
+        checkout_data = {
+            "guest_name": "João Silva",
+            "guest_email": "joao.teste@email.com",
+            "guest_phone": "(11) 99999-9999",
+            "room_number": "101",
+            "delivery_type": "room_delivery",
+            "payment_method": "room_charge",
+            "instructions": "Sem cebola, por favor",
+            "items": [
+                {
+                    "id": "p1",
+                    "nome": "Filé Mignon ao Molho Madeira",
+                    "preco": 89.90,
+                    "quantity": 1,
+                    "partner_id": "rest-001",
+                    "partner_name": "Restaurante Gourmet"
+                },
+                {
+                    "id": "p2", 
+                    "nome": "Risoto de Camarão",
+                    "preco": 79.90,
+                    "quantity": 2,
+                    "partner_id": "rest-001",
+                    "partner_name": "Restaurante Gourmet"
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Marketplace Checkout", 
+            "POST", 
+            "marketplace/checkout", 
+            200,
+            checkout_data
+        )
+        
+        if success:
+            orders = response.get('orders', [])
+            checkout_summary = response.get('checkout_summary', {})
+            
+            print(f"✅ Checkout successful - {len(orders)} orders created")
+            print(f"✅ Total: R$ {checkout_summary.get('total', 0):.2f}")
+            print(f"✅ Estimated delivery: {response.get('estimated_delivery', 'N/A')}")
+            
+            # Validate order structure
+            for i, order in enumerate(orders):
+                if 'order_number' in order and 'partner' in order:
+                    print(f"✅ Order {i+1}: {order['order_number']} - {order['partner']}")
+                else:
+                    print(f"⚠️  Order {i+1} missing required fields")
+        
+        self.log_test("Marketplace Checkout", success, "Failed to process marketplace checkout" if not success else "")
+        return success
+
+    def test_subscription_management(self) -> bool:
+        """Test subscription management endpoints (requires admin auth)"""
+        print("\n=== Testing Subscription Management ===")
+        
+        # Test creating subscription (requires admin auth)
+        if not self.admin_token:
+            print("❌ Cannot test subscription management - no admin token")
+            return False
+        
+        # Get a hotel ID first
+        old_token = self.token
+        self.token = self.admin_token
+        
+        success, hotels_response = self.run_test(
+            "Get Hotels",
+            "GET", 
+            "hotels",
+            200
+        )
+        
+        if not success or not hotels_response:
+            print("❌ Cannot get hotels for subscription test")
+            self.token = old_token
+            return False
+            
+        hotel_id = hotels_response[0]['id'] if hotels_response else "test-hotel-id"
+        print(f"Using hotel ID: {hotel_id}")
+        
+        # Test creating subscription
+        subscription_data = {
+            "hotel_id": hotel_id,
+            "plan_id": "professional", 
+            "billing_cycle": "monthly",
+            "payment_method": "credit_card"
+        }
+        
+        success, response = self.run_test(
+            "Create Subscription",
+            "POST",
+            "subscriptions/subscribe", 
+            200,
+            subscription_data
+        )
+        
+        if success:
+            print(f"✅ Subscription created: {response.get('message', 'Success')}")
+        
+        # Test getting subscription details 
+        success2, sub_response = self.run_test(
+            "Get Subscription Details",
+            "GET",
+            f"subscriptions/{hotel_id}",
+            200
+        )
+        
+        if success2:
+            subscription = sub_response.get('subscription', {})
+            print(f"✅ Subscription details retrieved")
+            print(f"   Plan: {subscription.get('plan', 'N/A')}")
+            print(f"   Status: {subscription.get('status', 'N/A')}")
+            print(f"   Monthly price: R$ {subscription.get('monthly_price', 0)}")
+        
+        self.token = old_token
+        
+        self.log_test("Create Subscription", success, "Failed to create subscription" if not success else "")
+        self.log_test("Get Subscription Details", success2, "Failed to get subscription details" if not success2 else "")
+        
+        return success and success2
+
+    def test_guest_marketplace_api(self) -> bool:
+        """Test guest marketplace API endpoint"""
+        print("\n=== Testing Guest Marketplace API ===")
+        
+        success, response = self.run_test(
+            "Get Guest Marketplace",
+            "GET",
+            "guest/marketplace",
+            200
+        )
+        
+        if success:
+            partners = response.get('partners', [])
+            cities = response.get('available_cities', [])
+            types = response.get('available_types', [])
+            
+            print(f"✅ Found {len(partners)} marketplace partners")
+            print(f"✅ Available cities: {cities}")
+            print(f"✅ Available types: {types}")
+            
+            # Test with filters
+            if cities:
+                success2, filtered_response = self.run_test(
+                    "Get Marketplace with City Filter",
+                    "GET", 
+                    f"guest/marketplace?cidade={cities[0]}",
+                    200
+                )
+                if success2:
+                    filtered_partners = filtered_response.get('partners', [])
+                    print(f"✅ Filtered by city '{cities[0]}': {len(filtered_partners)} partners")
+        
+        self.log_test("Guest Marketplace API", success, "Failed to get marketplace partners" if not success else "")
+        return success
+
+    def authenticate_admins(self):
+        """Authenticate both admin users"""
+        print("\n=== Admin Authentication ===")
+        
+        # Platform admin
+        success, response = self.run_test(
+            "Platform Admin Login", 
+            "POST", 
+            "auth/login", 
+            200, 
+            self.platform_admin
+        )
+        
+        if success and 'access_token' in response:
+            self.admin_token = response['access_token']
+            print(f"✅ Platform admin authenticated")
+        else:
+            print(f"❌ Platform admin authentication failed: {response}")
+        
+        # Hotel admin
+        success2, response2 = self.run_test(
+            "Hotel Admin Login",
+            "POST", 
+            "auth/login", 
+            200, 
+            self.hotel_admin
+        )
+        
+        if success2 and 'access_token' in response2:
+            self.hotel_admin_token = response2['access_token']
+            print(f"✅ Hotel admin authenticated")
+        else:
+            print(f"❌ Hotel admin authentication failed: {response2}")
+
     def run_all_tests(self):
         """Run comprehensive API test suite"""
         print("🏨 Starting Hestia Hotel Management API Tests")
