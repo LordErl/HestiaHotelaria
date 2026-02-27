@@ -118,6 +118,30 @@ const GuestMarketplacePage = () => {
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.preco * item.quantity), 0);
 
+  const handleCheckout = async (e) => {
+    e.preventDefault();
+    setCheckoutLoading(true);
+    
+    try {
+      const response = await axios.post(`${API}/marketplace/checkout`, {
+        ...checkoutData,
+        items: cart.map(item => ({
+          ...item,
+          partner_id: item.partner_id,
+          partner_name: item.partner_name
+        }))
+      });
+      
+      setOrderSuccess(response.data);
+      setShowCheckout(false);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Erro ao processar pedido. Tente novamente.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const mockProducts = [
     { id: 'p1', nome: 'Filé Mignon ao Molho Madeira', preco: 89.90, categoria: 'pratos principais' },
     { id: 'p2', nome: 'Risoto de Camarão', preco: 79.90, categoria: 'pratos principais' },
