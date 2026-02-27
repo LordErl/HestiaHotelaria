@@ -6005,14 +6005,9 @@ async def get_guest_orders(guest_email: str):
 
 # ================== GESTÃO DE PLANOS E ASSINATURAS ==================
 
-class PlanPricing(BaseModel):
-    starter: dict = {"monthly": 299, "annual": 2990, "features": ["Até 30 quartos", "Motor de Reservas", "Suporte por email"]}
-    professional: dict = {"monthly": 599, "annual": 5990, "features": ["Até 100 quartos", "Integração OTAs", "Revenue Management", "Suporte prioritário"]}
-    enterprise: dict = {"monthly": 1499, "annual": 14990, "features": ["Quartos ilimitados", "API personalizada", "Gerente de conta dedicado", "SLA garantido"]}
-
 @api_router.get("/subscriptions/plans")
 async def get_subscription_plans():
-    """Lista os planos disponíveis com preços e features"""
+    """Lista os planos disponíveis com preços e features - PÚBLICO"""
     return {
         "plans": [
             {
