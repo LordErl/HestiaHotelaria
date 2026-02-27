@@ -5965,6 +5965,10 @@ async def marketplace_checkout(data: CheckoutData):
             'items_count': len(partner_data['items']),
             'total': order_dict['total']
         })
+        
+        # Send notifications for this order
+        order_for_notification = {**order_dict, 'estimated_delivery': '30-45 minutos' if data.delivery_type == 'room_delivery' else 'Retirada em 20 minutos'}
+        asyncio.create_task(send_order_notifications(order_for_notification))
     
     return {
         "success": True,
