@@ -475,12 +475,20 @@ class HestiaAPITester:
 
     def test_platform_revenue_b2b(self):
         """Test B2B revenue dashboard - should only work for platform admin"""
-        return self.run_test(
+        expected_status = 200 if (self.current_user and (self.current_user.get('is_platform_admin') or self.current_user.get('email') == 'admin@hestia.com')) else 403
+        success, response = self.run_test(
             "Platform Revenue B2B Dashboard",
             "GET",
             "platform/revenue",
-            200 if self.current_user and (self.current_user.get('is_platform_admin') or self.current_user.get('email') == 'admin@hestia.com') else 403
+            expected_status
         )
+        
+        if not success and expected_status == 200:
+            print(f"   ❌ Platform admin check failed for {self.current_user.get('email')} - is_platform_admin: {self.current_user.get('is_platform_admin')}")
+        elif success and expected_status == 403:
+            print(f"   ❌ Non-admin user {self.current_user.get('email')} should not access B2B dashboard")
+        
+        return success
 
     def test_guest_marketplace(self):
         """Test guest marketplace endpoint"""
