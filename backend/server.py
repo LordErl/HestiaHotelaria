@@ -3402,12 +3402,6 @@ async def get_events_stats(hotel_id: str, current_user: dict = Depends(get_curre
 
 # ================== ASSINATURAS MARKETPLACE ==================
 
-@api_router.get("/subscriptions/plans")
-async def get_subscription_plans(current_user: dict = Depends(get_current_user)):
-    """Get available subscription plans"""
-    result = supabase.table('subscription_plans').select('*').eq('is_active', True).execute()
-    return result.data
-
 @api_router.post("/subscriptions/plans")
 async def create_subscription_plan(plan: dict, current_user: dict = Depends(get_current_user)):
     """Create subscription plan (admin only)"""
