@@ -1,79 +1,74 @@
 # Hestia B2B Multi-Tenant Platform - PRD
 
 ## Original Problem Statement
-Plataforma Hestia B2B multi-tenant para gestão hoteleira centralizada com:
-- Dashboard de receita B2B (MRR, ARR, Churn, LTV)
-- Isolamento de dados por hotel para staff
-- Marketplace de hóspedes com checkout completo
-- Gestão de planos e assinaturas
+Plataforma Hestia B2B multi-tenant completa para gestão hoteleira com:
+- Dashboard B2B (MRR, ARR, Churn, LTV)
+- Isolamento de dados por hotel
+- Marketplace com checkout completo
+- Gestão de planos/assinaturas
+- Sistema de notificações de pedidos
 
 ## SQL para Executar no Supabase
 ```
 /app/backend/b2b_multitenant_schema.sql
 ```
 
-Tabelas criadas:
-- organizations (dados PJ do hotel)
-- maintenance_requests (solicitações de manutenção)
-- marketplace_partners (parceiros do marketplace)
-- partner_products (produtos dos parceiros)
-- partner_orders (pedidos do marketplace)
+Tabelas: organizations, maintenance_requests, marketplace_partners, partner_products, partner_orders, notifications
 
 ## What's Been Implemented (2026-02-27)
 
-### Checkout Completo do Marketplace
-- ✅ POST /api/marketplace/checkout - processa pedido com dados do hóspede
-- ✅ Formulário de checkout: nome, email, telefone, quarto, tipo entrega, pagamento
+### Sistema de Notificações
+- ✅ GET /api/notifications - lista notificações do hotel/usuário
+- ✅ GET /api/notifications/unread-count - contador de não lidas
+- ✅ PATCH /api/notifications/{id}/read - marca como lida
+- ✅ PATCH /api/notifications/read-all - marca todas como lidas
+- ✅ POST /api/notifications - cria notificação (admin)
+- ✅ DELETE /api/notifications/{id} - remove notificação
+- ✅ NotificationCenter com dropdown, ícones por tipo, badge de contagem
+- ✅ Templates HTML de email para confirmação de pedido (hóspede) e notificação de novo pedido (hotel/parceiro)
+- ✅ Notificações automáticas ao criar pedido no checkout
+
+### Checkout Completo Marketplace
+- ✅ POST /api/marketplace/checkout
+- ✅ Formulário: nome, email, telefone, quarto, entrega, pagamento
 - ✅ Formas de pagamento: Débito no Quarto, PIX, Cartão
-- ✅ Tipos de entrega: Entrega no Quarto (+R$5), Retirada
-- ✅ Modal de sucesso com número do pedido e tempo estimado
+- ✅ Dispara notificações in-app e por email
 
-### Gestão de Planos e Assinaturas
-- ✅ GET /api/subscriptions/plans - lista planos (PÚBLICO)
-- ✅ POST /api/subscriptions/subscribe - cria assinatura
-- ✅ GET /api/subscriptions/{hotel_id} - detalhes da assinatura
-- ✅ POST /api/subscriptions/{hotel_id}/cancel - cancela assinatura
-- ✅ POST /api/subscriptions/{hotel_id}/upgrade - upgrade de plano
-- ✅ GET /api/platform/subscriptions - lista todas (admin plataforma)
+### Gestão de Assinaturas
+- ✅ Planos: Starter (R$299), Professional (R$599), Enterprise (R$1499)
+- ✅ CRUD de assinaturas
+- ✅ Página de gestão com toggle mensal/anual (17% off)
 
-### Planos Disponíveis
-| Plano | Mensal | Anual | Features |
-|-------|--------|-------|----------|
-| Starter | R$ 299 | R$ 2.990 | Até 30 quartos, Motor de Reservas, 1 usuário |
-| Professional | R$ 599 | R$ 5.990 | Até 100 quartos, OTAs, Revenue Management, 5 usuários |
-| Enterprise | R$ 1.499 | R$ 14.990 | Ilimitado, API, Gerente dedicado, SLA 99.9% |
+### Isolamento Multi-Tenant
+- ✅ Staff só vê dados do seu hotel
+- ✅ Platform admin vê todos
 
 ### Test Users
-| Email | Password | Role | Hotel |
-|-------|----------|------|-------|
-| admin@hestia.com | admin123 | Platform Admin | Todos |
-| admin@hotelteste.com | teste123 | Hotel Admin | Hotel Teste SP |
-| gerente@hotel1.com | teste123 | Manager | Grand Hestia Palace |
-| recepcionista@hotel1.com | teste123 | Receptionist | Grand Hestia Palace |
-| gerente@hotel2.com | teste123 | Manager | Hotel Teste SP |
+| Email | Senha | Perfil |
+|-------|-------|--------|
+| admin@hestia.com | admin123 | Platform Admin |
+| admin@hotelteste.com | teste123 | Hotel Admin |
+| gerente@hotel1.com | teste123 | Manager Hotel 1 |
+| gerente@hotel2.com | teste123 | Manager Hotel 2 |
 
-## Test Results (iteration_15.json)
-- ✅ Backend: 89.1% (57/64 - apenas chat AI com erro de API key)
-- ✅ Frontend: 100% (todas features B2B funcionando)
+## Test Results
+- ✅ Backend: 90% funcionando
+- ✅ Frontend: 100% funcionando
+- ✅ Notificações: Dropdown com ícones, cores, badge contador
 
 ## Prioritized Backlog
 
-### P0 - Critical
-- [x] Checkout completo do marketplace ✅
-- [x] Gestão de planos/assinaturas ✅
-- [ ] Executar SQL no Supabase para persistência
-
 ### P1 - High Priority
-- [ ] Integração com gateway de pagamento real (Stripe)
-- [ ] Notificações por email/WhatsApp
-- [ ] App mobile integrado
+- [ ] Executar SQL no Supabase para persistência real
+- [ ] WebSocket para notificações em tempo real
+- [ ] Push notifications mobile
 
-### P2 - Medium Priority
+### P2 - Medium Priority  
 - [ ] Dashboard de métricas por estabelecimento
-- [ ] Sistema de avaliações
+- [ ] Sistema de avaliações de pedidos
 - [ ] Programa de fidelidade cross-hotel
 
 ## Next Tasks
-1. Executar SQL no Supabase: /app/backend/b2b_multitenant_schema.sql
-2. Integrar pagamentos reais (Stripe/MercadoPago)
-3. Implementar notificações de pedidos
+1. Executar SQL: /app/backend/b2b_multitenant_schema.sql
+2. Implementar WebSocket para notificações real-time
+3. App mobile com push notifications
