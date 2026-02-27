@@ -36,11 +36,13 @@ import {
   RefreshCw,
   Star,
   BarChart3,
-  Smartphone
+  Smartphone,
+  Building2,
+  Wrench
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const { user, currentHotel, logout } = useAuth();
+  const { user, currentHotel, logout, isPlatformAdmin } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -49,13 +51,15 @@ const Sidebar = () => {
     navigate('/login');
   };
 
-  const navItems = [
+  // Items padrão para todos os usuários de hotel
+  const hotelNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/reservations', icon: CalendarDays, label: 'Reservas' },
     { to: '/rooms', icon: BedDouble, label: 'Quartos' },
     { to: '/guests', icon: Users, label: 'Hóspedes' },
     { to: '/check-in-out', icon: LogIn, label: 'Check-in/Out' },
     { to: '/housekeeping', icon: ClipboardList, label: 'Housekeeping' },
+    { to: '/maintenance', icon: Wrench, label: 'Manutenção' },
     { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
     { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
     { to: '/orders', icon: Package, label: 'Meus Pedidos' },
@@ -71,6 +75,16 @@ const Sidebar = () => {
     { to: '/mobile-staff', icon: Smartphone, label: 'App Staff' },
     { to: '/marketplace-admin', icon: Settings2, label: 'Admin MP' },
   ];
+
+  // Items exclusivos para admin da plataforma
+  const platformAdminItems = [
+    { to: '/platform-admin', icon: Building2, label: 'Admin Hestia', highlight: true },
+  ];
+
+  // Combina os items baseado no tipo de usuário
+  const navItems = isPlatformAdmin 
+    ? [...platformAdminItems, ...hotelNavItems]
+    : hotelNavItems;
 
   return (
     <aside 
