@@ -423,6 +423,44 @@ class HestiaAPITester:
         self.token = old_token
         return success
 
+    def test_platform_admin_endpoints(self):
+        """Test platform admin specific endpoints"""
+        print("\n🏢 Testing Platform Admin Endpoints")
+        
+        # Test platform dashboard
+        success1, _ = self.run_test(
+            "Platform Dashboard",
+            "GET",
+            "platform/dashboard",
+            200
+        )
+        
+        # Test platform hotels list
+        success2, _ = self.run_test(
+            "Platform Hotels List",
+            "GET", 
+            "platform/hotels",
+            200
+        )
+        
+        # Test platform users list
+        success3, _ = self.run_test(
+            "Platform Users List",
+            "GET",
+            "platform/users", 
+            200
+        )
+        
+        # Test platform organizations (may return empty list)
+        success4, _ = self.run_test(
+            "Platform Organizations List",
+            "GET",
+            "platform/organizations",
+            200
+        )
+        
+        return success1 and success2 and success3 and success4
+
     def run_all_tests(self):
         """Run comprehensive API test suite"""
         print("🏨 Starting Hestia Hotel Management API Tests")
