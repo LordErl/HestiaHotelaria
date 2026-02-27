@@ -149,12 +149,18 @@ CREATE TABLE IF NOT EXISTS partner_orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
     -- Origem
-    hotel_id UUID NOT NULL REFERENCES hotels(id),
-    guest_id UUID NOT NULL REFERENCES guests(id),
+    hotel_id UUID REFERENCES hotels(id),
+    guest_id UUID REFERENCES guests(id),
     reservation_id UUID REFERENCES reservations(id),
     
+    -- Guest Info (when not linked to reservation)
+    guest_name VARCHAR(255),
+    guest_email VARCHAR(255),
+    guest_phone VARCHAR(50),
+    
     -- Destino
-    partner_id UUID NOT NULL REFERENCES marketplace_partners(id),
+    partner_id VARCHAR(100),
+    partner_name VARCHAR(255),
     
     -- Pedido
     order_number VARCHAR(20) UNIQUE NOT NULL,
@@ -166,6 +172,8 @@ CREATE TABLE IF NOT EXISTS partner_orders (
     
     -- Status
     status VARCHAR(50) DEFAULT 'pending', -- pending, confirmed, preparing, delivered, cancelled
+    payment_method VARCHAR(50) DEFAULT 'room_charge',
+    payment_status VARCHAR(50) DEFAULT 'pending',
     
     -- Entrega
     tipo_entrega VARCHAR(50) DEFAULT 'room_delivery', -- room_delivery, pickup
@@ -177,6 +185,37 @@ CREATE TABLE IF NOT EXISTS partner_orders (
     confirmed_at TIMESTAMPTZ,
     delivered_at TIMESTAMPTZ
 );
+
+-- =====================================================
+-- TABELA: notifications (Sistema de Notificações)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    
+    -- Tipo e Conteúdo
+    type VARCHAR(50) NOT NULL, -- new_order, reservation, maintenance, alert, message
+    title VARCHAR(255) NOT NULL,
+    message TEXT,
+    data JSONB DEFAULT '{}',
+    
+    -- Destino
+    hotel_id UUID REFERENCES hotels(id),
+    user_id UUID REFERENCES users(id),
+    partner_id VARCHAR(100),
+    
+    -- Status
+    is_read BOOLEAN DEFAULT false,
+    
+    -- Timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    read_at TIMESTAMPTZ
+);
+
+-- Índices para notifications
+CREATE INDEX IF NOT EXISTS idx_notifications_hotel ON notifications(hotel_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
 
 -- Índices para partner_orders
 CREATE INDEX IF NOT EXISTS idx_partner_orders_hotel ON partner_orders(hotel_id);
