@@ -103,6 +103,7 @@ class UserResponse(BaseModel):
     role: str
     hotel_id: Optional[str] = None
     is_active: bool = True
+    is_platform_admin: bool = False
 
 class TokenResponse(BaseModel):
     access_token: str
