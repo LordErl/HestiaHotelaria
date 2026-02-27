@@ -388,6 +388,13 @@ async def create_guest(guest_data: GuestCreate, hotel_id: str, current_user: dic
 
 @api_router.get("/guests")
 async def get_guests(hotel_id: Optional[str] = None, search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    # Isolamento: Staff só pode ver hóspedes do seu hotel
+    user_hotel_id = current_user.get('hotel_id')
+    
+    # Se não é admin da plataforma, força filtro pelo hotel do usuário
+    if not is_platform_admin(current_user) and user_hotel_id:
+        hotel_id = user_hotel_id
+    
     query = supabase.table('guests').select('*')
     if hotel_id:
         query = query.eq('hotel_id', hotel_id)
