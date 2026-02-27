@@ -1022,6 +1022,10 @@ class HestiaAPITester:
         self.test_subscription_management()
         self.test_guest_marketplace_api()
         
+        # Notification System Tests
+        print("\n🔔 Testing Notification System")
+        self.test_notifications_system()
+        
         # Print summary
         print("\n" + "=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
