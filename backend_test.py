@@ -934,6 +934,16 @@ class HestiaAPITester:
         print("\n🏢 Testing Platform Admin APIs")
         self.test_platform_admin_endpoints()
         
+        # Authenticate admins for subscription/marketplace tests
+        self.authenticate_admins()
+        
+        # New B2B Marketplace & Subscription Tests
+        print("\n💳 Testing B2B Subscription & Marketplace Features")
+        self.test_subscription_plans_public()
+        self.test_marketplace_checkout()
+        self.test_subscription_management()
+        self.test_guest_marketplace_api()
+        
         # Print summary
         print("\n" + "=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
