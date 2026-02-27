@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
+"""
+Hestia B2B Marketplace & Subscription Management API Tests
+Testing subscription plans, marketplace checkout, and subscription management features.
+"""
 
 import requests
 import sys
 import json
 from datetime import datetime
+from typing import Dict, Any, Optional
 
 class HestiaAPITester:
     def __init__(self, base_url="https://708dbcce-f0a1-4109-8a30-af2c8fcec6f0.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
+        self.admin_token = None
+        self.hotel_admin_token = None
         self.hotel_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.failed_tests = []
         self.current_user = None
+        
+        # Test credentials from requirements
+        self.platform_admin = {"email": "admin@hestia.com", "password": "admin123"}
+        self.hotel_admin = {"email": "admin@hotelteste.com", "password": "teste123"}
 
     def log_test(self, name, success, details=""):
         """Log test results"""
