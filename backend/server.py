@@ -6002,7 +6002,7 @@ async def get_guest_orders(guest_email: str):
 
 # ================== GESTÃO DE PLANOS E ASSINATURAS ==================
 
-@api_router.get("/subscriptions/plans")
+@public_router.get("/subscriptions/plans")
 async def get_subscription_plans():
     """Lista os planos disponíveis com preços e features - PÚBLICO"""
     return {
