@@ -14,7 +14,8 @@ import {
   X,
   ChevronRight,
   Plus,
-  Minus
+  Minus,
+  Check
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -32,6 +33,18 @@ const GuestMarketplacePage = () => {
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(null);
+  const [checkoutData, setCheckoutData] = useState({
+    guest_name: '',
+    guest_email: '',
+    guest_phone: '',
+    room_number: '',
+    delivery_type: 'room_delivery',
+    payment_method: 'room_charge',
+    instructions: ''
+  });
 
   const typeIcons = {
     restaurant: Utensils,
