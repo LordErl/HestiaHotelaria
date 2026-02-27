@@ -271,12 +271,14 @@ ALTER TABLE marketplace_partners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE partner_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE partner_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow all for organizations" ON organizations FOR ALL USING (true);
 CREATE POLICY "Allow all for marketplace_partners" ON marketplace_partners FOR ALL USING (true);
 CREATE POLICY "Allow all for partner_products" ON partner_products FOR ALL USING (true);
 CREATE POLICY "Allow all for partner_orders" ON partner_orders FOR ALL USING (true);
 CREATE POLICY "Allow all for maintenance_requests" ON maintenance_requests FOR ALL USING (true);
+CREATE POLICY "Allow all for notifications" ON notifications FOR ALL USING (true);
 
 -- =====================================================
 -- DADOS INICIAIS: Admin Plataforma
