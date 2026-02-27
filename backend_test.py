@@ -836,6 +836,84 @@ class HestiaAPITester:
         self.log_test("Guest Marketplace API", success, "Failed to get marketplace partners" if not success else "")
         return success
 
+    def test_notifications_system(self) -> bool:
+        """Test notification system endpoints"""
+        print("\n=== Testing Notification System ===")
+        
+        # Test 1: Get notifications
+        success1, notifications_response = self.run_test(
+            "Get Notifications",
+            "GET",
+            "notifications",
+            200
+        )
+        
+        if success1:
+            notifications = notifications_response if isinstance(notifications_response, list) else []
+            print(f"✅ Found {len(notifications)} notifications")
+            for notif in notifications[:2]:  # Show first 2
+                print(f"   - {notif.get('title', 'Unknown')}: {notif.get('message', 'No message')}")
+        
+        # Test 2: Get unread count 
+        success2, count_response = self.run_test(
+            "Get Unread Notifications Count",
+            "GET",
+            "notifications/unread-count",
+            200
+        )
+        
+        if success2:
+            unread_count = count_response.get('unread_count', 0)
+            print(f"✅ Unread notifications: {unread_count}")
+        
+        # Test 3: Mark all as read
+        success3, read_all_response = self.run_test(
+            "Mark All Notifications as Read",
+            "PATCH",
+            "notifications/read-all",
+            200
+        )
+        
+        if success3:
+            print(f"✅ Marked all notifications as read")
+        
+        # Test 4: Mark single notification as read (if we have any)
+        success4 = True
+        if success1 and notifications and len(notifications) > 0:
+            notification_id = notifications[0].get('id')
+            if notification_id:
+                success4, read_response = self.run_test(
+                    "Mark Single Notification as Read",
+                    "PATCH",
+                    f"notifications/{notification_id}/read",
+                    200
+                )
+                if success4:
+                    print(f"✅ Marked notification {notification_id} as read")
+        
+        # Test 5: Create notification (admin only)
+        success5 = True
+        if self.current_user and self.current_user.get('role') in ['admin', 'manager']:
+            notification_data = {
+                "type": "alert",
+                "title": "Teste de Notificação",
+                "message": "Esta é uma notificação de teste criada pela API",
+                "hotel_id": self.hotel_id
+            }
+            success5, create_response = self.run_test(
+                "Create Notification",
+                "POST",
+                "notifications",
+                200,
+                notification_data
+            )
+            if success5:
+                print(f"✅ Created test notification")
+        
+        all_success = success1 and success2 and success3 and success4 and success5
+        self.log_test("Notifications System", all_success, "One or more notification endpoints failed" if not all_success else "")
+        return all_success
+
     def authenticate_admins(self):
         """Authenticate both admin users"""
         print("\n=== Admin Authentication ===")
