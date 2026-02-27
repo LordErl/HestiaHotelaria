@@ -464,6 +464,167 @@ class HestiaAPITester:
         
         return success1 and success2 and success3 and success4
 
+    def test_seed_test_users(self):
+        """Test seeding test users for different profiles"""
+        return self.run_test(
+            "Seed test users",
+            "POST",
+            "seed-test-users",
+            200
+        )
+
+    def test_platform_revenue_b2b(self):
+        """Test B2B revenue dashboard - should only work for platform admin"""
+        return self.run_test(
+            "Platform Revenue B2B Dashboard",
+            "GET",
+            "platform/revenue",
+            200 if self.current_user and (self.current_user.get('is_platform_admin') or self.current_user.get('email') == 'admin@hestia.com') else 403
+        )
+
+    def test_guest_marketplace(self):
+        """Test guest marketplace endpoint"""
+        # Test without auth (public endpoint)
+        old_token = self.token
+        self.token = None
+        
+        # Basic marketplace
+        success1, response = self.run_test(
+            "Guest Marketplace (all)",
+            "GET",
+            "guest/marketplace",
+            200
+        )
+        
+        # Marketplace filtered by city
+        success2, _ = self.run_test(
+            "Guest Marketplace filtered by Rio",
+            "GET",
+            "guest/marketplace?cidade=Rio",
+            200
+        )
+        
+        # Marketplace filtered by São Paulo
+        success3, _ = self.run_test(
+            "Guest Marketplace filtered by São Paulo",  
+            "GET",
+            "guest/marketplace?cidade=São Paulo",
+            200
+        )
+        
+        # Marketplace filtered by type
+        success4, _ = self.run_test(
+            "Guest Marketplace filtered by restaurant",
+            "GET", 
+            "guest/marketplace?tipo=restaurant",
+            200
+        )
+        
+        self.token = old_token
+        return success1 and success2 and success3 and success4
+
+    def test_data_isolation_hotels(self):
+        """Test hotel data isolation - user should only see their hotel"""
+        if not self.current_user:
+            return False
+            
+        success, response = self.run_test(
+            f"Hotel data isolation for {self.current_user.get('email')}",
+            "GET",
+            "hotels",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            user_hotel_id = self.current_user.get('hotel_id')
+            is_platform_admin = self.current_user.get('is_platform_admin') or self.current_user.get('email') == 'admin@hestia.com'
+            
+            if is_platform_admin:
+                print(f"   Platform admin sees {len(response)} hotels (expected: all)")
+                return True
+            elif user_hotel_id:
+                # Staff should only see their hotel
+                user_hotels = [h for h in response if h.get('id') == user_hotel_id]
+                if len(response) == 1 and len(user_hotels) == 1:
+                    print(f"   Staff sees only their hotel: {response[0].get('name')} (correct isolation)")
+                    return True
+                else:
+                    print(f"   ❌ Isolation failed: Staff sees {len(response)} hotels, expected 1")
+                    return False
+            else:
+                print(f"   User without hotel_id sees {len(response)} hotels")
+                return len(response) == 0
+        
+        return success
+
+    def test_data_isolation_reservations(self):
+        """Test reservation data isolation"""
+        if not self.current_user:
+            return False
+            
+        success, response = self.run_test(
+            f"Reservation data isolation for {self.current_user.get('email')}",
+            "GET", 
+            "reservations",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            user_hotel_id = self.current_user.get('hotel_id')
+            is_platform_admin = self.current_user.get('is_platform_admin') or self.current_user.get('email') == 'admin@hestia.com'
+            
+            if is_platform_admin:
+                print(f"   Platform admin sees {len(response)} reservations (expected: all)")
+                return True
+            elif user_hotel_id:
+                # Check all reservations belong to user's hotel
+                foreign_reservations = [r for r in response if r.get('hotel_id') != user_hotel_id]
+                if len(foreign_reservations) == 0:
+                    print(f"   Staff sees {len(response)} reservations from their hotel (correct isolation)")
+                    return True
+                else:
+                    print(f"   ❌ Isolation failed: Staff sees {len(foreign_reservations)} reservations from other hotels")
+                    return False
+        
+        return success
+
+    def test_multi_user_isolation(self):
+        """Test data isolation with multiple users"""
+        print("\n🔒 Testing Multi-User Data Isolation")
+        
+        # Test with different users
+        test_users = [
+            ("admin@hestia.com", "admin123", "Platform Admin"),
+            ("gerente@hotel1.com", "teste123", "Hotel 1 Manager"), 
+            ("gerente@hotel2.com", "teste123", "Hotel 2 Manager"),
+            ("recepcionista@hotel1.com", "teste123", "Hotel 1 Receptionist")
+        ]
+        
+        isolation_results = []
+        
+        for email, password, description in test_users:
+            print(f"\n   Testing isolation for: {description} ({email})")
+            
+            # Login as this user
+            login_success = self.test_login(email, password)
+            if not login_success:
+                print(f"   ❌ Failed to login as {email}")
+                isolation_results.append(False)
+                continue
+            
+            # Test hotel isolation
+            hotel_isolation = self.test_data_isolation_hotels()
+            
+            # Test reservation isolation  
+            reservation_isolation = self.test_data_isolation_reservations()
+            
+            # Test platform revenue access
+            revenue_access = self.test_platform_revenue_b2b()
+            
+            isolation_results.append(hotel_isolation and reservation_isolation and revenue_access)
+        
+        return all(isolation_results)
+
     def run_all_tests(self):
         """Run comprehensive API test suite"""
         print("🏨 Starting Hestia Hotel Management API Tests")
