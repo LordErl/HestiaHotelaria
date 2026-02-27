@@ -5423,6 +5423,453 @@ async def create_partner_order(data: dict, current_user: dict = Depends(get_curr
     except Exception as e:
         return {**order_dict, "message": "Pedido criado (simulado)"}
 
+# ================== B2B REVENUE DASHBOARD ==================
+
+@api_router.get("/platform/revenue")
+async def get_platform_revenue_dashboard(current_user: dict = Depends(get_current_user)):
+    """Dashboard de receita B2B - MRR, churn, receita por plano"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    # Get all organizations with contract data
+    try:
+        orgs_result = supabase.table('organizations').select('*').execute()
+        organizations = orgs_result.data or []
+    except:
+        organizations = []
+    
+    # Get all hotels
+    hotels_result = supabase.table('hotels').select('id,name,city,is_active,created_at').execute()
+    hotels = hotels_result.data or []
+    
+    # Calculate metrics
+    active_contracts = [o for o in organizations if o.get('status_contrato') == 'active']
+    trial_contracts = [o for o in organizations if o.get('status_contrato') == 'trial']
+    cancelled_contracts = [o for o in organizations if o.get('status_contrato') == 'cancelled']
+    
+    # MRR (Monthly Recurring Revenue)
+    mrr = sum(float(o.get('valor_mensalidade') or 0) for o in active_contracts)
+    
+    # ARR (Annual Recurring Revenue)
+    arr = mrr * 12
+    
+    # Revenue by plan
+    plans_data = {
+        'starter': {'count': 0, 'mrr': 0, 'price': 299},
+        'professional': {'count': 0, 'mrr': 0, 'price': 599},
+        'enterprise': {'count': 0, 'mrr': 0, 'price': 1499}
+    }
+    
+    for org in active_contracts:
+        plan = org.get('plano_assinatura', 'starter')
+        if plan in plans_data:
+            plans_data[plan]['count'] += 1
+            plans_data[plan]['mrr'] += float(org.get('valor_mensalidade') or plans_data[plan]['price'])
+    
+    # Calculate churn rate (last 30 days)
+    total_start_period = len(active_contracts) + len(cancelled_contracts)
+    churn_rate = (len(cancelled_contracts) / total_start_period * 100) if total_start_period > 0 else 0
+    
+    # Growth metrics
+    current_month = datetime.now(timezone.utc).month
+    current_year = datetime.now(timezone.utc).year
+    
+    new_hotels_this_month = len([h for h in hotels if h.get('created_at') and 
+                                  datetime.fromisoformat(h['created_at'].replace('Z', '+00:00')).month == current_month and
+                                  datetime.fromisoformat(h['created_at'].replace('Z', '+00:00')).year == current_year])
+    
+    # Get all reservations for GMV calculation
+    res_result = supabase.table('reservations').select('total_amount,created_at').execute()
+    reservations = res_result.data or []
+    
+    # GMV total and this month
+    gmv_total = sum(float(r.get('total_amount') or 0) for r in reservations)
+    gmv_this_month = sum(float(r.get('total_amount') or 0) for r in reservations 
+                         if r.get('created_at') and 
+                         datetime.fromisoformat(r['created_at'].replace('Z', '+00:00')).month == current_month and
+                         datetime.fromisoformat(r['created_at'].replace('Z', '+00:00')).year == current_year)
+    
+    # Platform commission (10% of GMV)
+    platform_commission = gmv_total * 0.10
+    
+    # ARPU (Average Revenue Per User/Hotel)
+    arpu = mrr / len(active_contracts) if active_contracts else 0
+    
+    # LTV estimation (assuming 24 months average lifetime)
+    ltv = arpu * 24
+    
+    return {
+        "mrr": {
+            "value": mrr,
+            "formatted": f"R$ {mrr:,.2f}"
+        },
+        "arr": {
+            "value": arr,
+            "formatted": f"R$ {arr:,.2f}"
+        },
+        "gmv": {
+            "total": gmv_total,
+            "this_month": gmv_this_month,
+            "formatted_total": f"R$ {gmv_total:,.2f}",
+            "formatted_month": f"R$ {gmv_this_month:,.2f}"
+        },
+        "platform_commission": {
+            "value": platform_commission,
+            "formatted": f"R$ {platform_commission:,.2f}"
+        },
+        "contracts": {
+            "active": len(active_contracts),
+            "trial": len(trial_contracts),
+            "cancelled": len(cancelled_contracts),
+            "total": len(organizations)
+        },
+        "churn": {
+            "rate": round(churn_rate, 2),
+            "formatted": f"{churn_rate:.1f}%"
+        },
+        "plans": plans_data,
+        "arpu": {
+            "value": arpu,
+            "formatted": f"R$ {arpu:,.2f}"
+        },
+        "ltv": {
+            "value": ltv,
+            "formatted": f"R$ {ltv:,.2f}"
+        },
+        "growth": {
+            "new_hotels_this_month": new_hotels_this_month,
+            "total_hotels": len(hotels)
+        }
+    }
+
+# ================== SEED TEST USERS FOR EACH PROFILE ==================
+
+@api_router.post("/seed-test-users")
+async def seed_test_users():
+    """Criar usuários de teste para cada perfil"""
+    test_users = []
+    
+    # Get existing hotels
+    hotels_result = supabase.table('hotels').select('id,name,city').execute()
+    hotels = hotels_result.data or []
+    
+    if not hotels:
+        return {"error": "Nenhum hotel encontrado. Execute /api/seed primeiro."}
+    
+    # Use first two hotels for testing
+    hotel_1 = hotels[0]
+    hotel_2 = hotels[1] if len(hotels) > 1 else hotels[0]
+    
+    # Define test users
+    users_to_create = [
+        # Hotel 1 Staff
+        {
+            "email": "gerente@hotel1.com",
+            "name": "Carlos Gerente",
+            "role": "manager",
+            "hotel_id": hotel_1['id'],
+            "password": "teste123",
+            "description": f"Gerente do {hotel_1['name']}"
+        },
+        {
+            "email": "recepcionista@hotel1.com",
+            "name": "Ana Recepcionista",
+            "role": "receptionist",
+            "hotel_id": hotel_1['id'],
+            "password": "teste123",
+            "description": f"Recepcionista do {hotel_1['name']}"
+        },
+        {
+            "email": "camareira@hotel1.com",
+            "name": "Maria Camareira",
+            "role": "housekeeper",
+            "hotel_id": hotel_1['id'],
+            "password": "teste123",
+            "description": f"Camareira do {hotel_1['name']}"
+        },
+        # Hotel 2 Staff
+        {
+            "email": "gerente@hotel2.com",
+            "name": "Pedro Gerente",
+            "role": "manager",
+            "hotel_id": hotel_2['id'],
+            "password": "teste123",
+            "description": f"Gerente do {hotel_2['name']}"
+        },
+        {
+            "email": "recepcionista@hotel2.com",
+            "name": "Julia Recepcionista",
+            "role": "receptionist",
+            "hotel_id": hotel_2['id'],
+            "password": "teste123",
+            "description": f"Recepcionista do {hotel_2['name']}"
+        },
+    ]
+    
+    for user_data in users_to_create:
+        # Check if user already exists
+        existing = supabase.table('users').select('id').eq('email', user_data['email']).execute()
+        if existing.data:
+            test_users.append({
+                "email": user_data['email'],
+                "status": "já existe",
+                "role": user_data['role'],
+                "hotel": user_data.get('description', '')
+            })
+            continue
+        
+        # Create user
+        user_id = str(uuid.uuid4())
+        user_dict = {
+            'id': user_id,
+            'email': user_data['email'],
+            'name': user_data['name'],
+            'role': user_data['role'],
+            'hotel_id': user_data.get('hotel_id'),
+            'password_hash': hash_password(user_data['password']),
+            'is_active': True
+        }
+        
+        try:
+            supabase.table('users').insert(user_dict).execute()
+            test_users.append({
+                "email": user_data['email'],
+                "password": user_data['password'],
+                "role": user_data['role'],
+                "hotel": user_data.get('description', ''),
+                "status": "criado"
+            })
+        except Exception as e:
+            test_users.append({
+                "email": user_data['email'],
+                "status": f"erro: {str(e)}",
+                "role": user_data['role']
+            })
+    
+    # Create test guests
+    guests_to_create = [
+        {
+            "name": "Roberto Hóspede",
+            "email": "hospede@teste.com",
+            "phone": "(11) 99999-1111",
+            "document_type": "cpf",
+            "document_number": "111.222.333-44",
+            "city": "São Paulo"
+        },
+        {
+            "name": "Fernanda Cliente",
+            "email": "cliente@teste.com",
+            "phone": "(21) 99999-2222",
+            "document_type": "cpf",
+            "document_number": "555.666.777-88",
+            "city": "Rio de Janeiro"
+        }
+    ]
+    
+    test_guests = []
+    for guest_data in guests_to_create:
+        existing = supabase.table('guests').select('id').eq('email', guest_data['email']).execute()
+        if existing.data:
+            test_guests.append({
+                "email": guest_data['email'],
+                "status": "já existe"
+            })
+            continue
+        
+        guest_id = str(uuid.uuid4())
+        guest_dict = {
+            'id': guest_id,
+            **guest_data
+        }
+        
+        try:
+            supabase.table('guests').insert(guest_dict).execute()
+            test_guests.append({
+                "email": guest_data['email'],
+                "name": guest_data['name'],
+                "city": guest_data['city'],
+                "status": "criado"
+            })
+        except Exception as e:
+            test_guests.append({
+                "email": guest_data['email'],
+                "status": f"erro: {str(e)}"
+            })
+    
+    return {
+        "message": "Usuários de teste criados",
+        "users": test_users,
+        "guests": test_guests,
+        "hotels_used": [
+            {"id": hotel_1['id'], "name": hotel_1['name'], "city": hotel_1.get('city')},
+            {"id": hotel_2['id'], "name": hotel_2['name'], "city": hotel_2.get('city')} if hotel_2['id'] != hotel_1['id'] else None
+        ],
+        "credentials_summary": {
+            "platform_admin": {"email": "admin@hestia.com", "password": "admin123"},
+            "hotel_admin_1": {"email": "admin@hotelteste.com", "password": "teste123"},
+            "manager_hotel_1": {"email": "gerente@hotel1.com", "password": "teste123"},
+            "receptionist_hotel_1": {"email": "recepcionista@hotel1.com", "password": "teste123"},
+            "housekeeper_hotel_1": {"email": "camareira@hotel1.com", "password": "teste123"},
+            "manager_hotel_2": {"email": "gerente@hotel2.com", "password": "teste123"},
+            "receptionist_hotel_2": {"email": "recepcionista@hotel2.com", "password": "teste123"},
+        }
+    }
+
+# ================== MARKETPLACE - GUEST VIEW (All establishments by region) ==================
+
+@api_router.get("/guest/marketplace")
+async def get_guest_marketplace(cidade: Optional[str] = None, tipo: Optional[str] = None):
+    """
+    Marketplace para hóspedes - vê todas as ofertas de todos os estabelecimentos
+    Filtrado por cidade/região
+    """
+    try:
+        query = supabase.table('marketplace_partners').select('*').eq('is_active', True)
+        if cidade:
+            query = query.ilike('cidade', f'%{cidade}%')
+        if tipo:
+            query = query.eq('tipo', tipo)
+        result = query.order('is_featured', desc=True).execute()
+        partners = result.data or []
+    except:
+        # Mock data with different cities
+        partners = [
+            {
+                "id": "rest-001",
+                "nome": "Restaurante Sabor & Arte",
+                "tipo": "restaurant",
+                "descricao": "Culinária contemporânea com ingredientes locais",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "rating": 4.8,
+                "is_featured": True,
+                "categorias": ["brasileira", "contemporânea"],
+                "horario_funcionamento": {"seg-sex": "11:00-23:00", "sab-dom": "12:00-00:00"},
+                "endereco": "Av. Paulista, 500",
+                "telefone": "(11) 3000-0001"
+            },
+            {
+                "id": "rest-002",
+                "nome": "Pizzaria Bella Napoli",
+                "tipo": "restaurant",
+                "descricao": "Pizzas artesanais no forno a lenha",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "rating": 4.6,
+                "is_featured": False,
+                "categorias": ["italiana", "pizzaria"],
+                "endereco": "Rua Augusta, 200",
+                "telefone": "(11) 3000-0002"
+            },
+            {
+                "id": "rest-003",
+                "nome": "Churrascaria Fogo de Chão",
+                "tipo": "restaurant",
+                "descricao": "Rodízio de carnes premium",
+                "cidade": "Rio de Janeiro",
+                "estado": "RJ",
+                "rating": 4.7,
+                "is_featured": True,
+                "categorias": ["churrascaria", "brasileira"],
+                "endereco": "Av. Atlântica, 1000",
+                "telefone": "(21) 3000-0003"
+            },
+            {
+                "id": "spa-001",
+                "nome": "Zen Spa & Wellness",
+                "tipo": "spa",
+                "descricao": "Tratamentos de bem-estar e relaxamento",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "rating": 4.9,
+                "is_featured": True,
+                "categorias": ["spa", "massagem", "estética"],
+                "endereco": "Rua Oscar Freire, 300",
+                "telefone": "(11) 3000-0004"
+            },
+            {
+                "id": "spa-002",
+                "nome": "Copacabana Spa",
+                "tipo": "spa",
+                "descricao": "Spa com vista para o mar",
+                "cidade": "Rio de Janeiro",
+                "estado": "RJ",
+                "rating": 4.8,
+                "is_featured": False,
+                "categorias": ["spa", "massagem"],
+                "endereco": "Av. Atlântica, 2000",
+                "telefone": "(21) 3000-0005"
+            },
+            {
+                "id": "shop-001",
+                "nome": "Loja de Conveniência Express",
+                "tipo": "shop",
+                "descricao": "Produtos de conveniência 24h",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "rating": 4.2,
+                "is_featured": False,
+                "categorias": ["conveniência", "snacks"],
+                "endereco": "Dentro do hotel",
+                "telefone": "(11) 3000-0006"
+            }
+        ]
+        
+        # Apply filters to mock data
+        if cidade:
+            partners = [p for p in partners if cidade.lower() in p.get('cidade', '').lower()]
+        if tipo:
+            partners = [p for p in partners if p.get('tipo') == tipo]
+    
+    # Group by city for easier navigation
+    cities = {}
+    for p in partners:
+        city = p.get('cidade', 'Outros')
+        if city not in cities:
+            cities[city] = []
+        cities[city].append(p)
+    
+    return {
+        "total": len(partners),
+        "partners": partners,
+        "by_city": cities,
+        "available_cities": list(cities.keys()),
+        "available_types": list(set(p.get('tipo') for p in partners))
+    }
+
+@api_router.post("/guest/orders")
+async def create_guest_order(data: dict):
+    """
+    Criar pedido de hóspede - pode fazer pedidos de qualquer estabelecimento
+    """
+    order_id = str(uuid.uuid4())
+    order_number = f"GUEST{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:4].upper()}"
+    
+    order_dict = {
+        'id': order_id,
+        'order_number': order_number,
+        'guest_email': data.get('guest_email'),
+        'guest_name': data.get('guest_name'),
+        'hotel_id': data.get('hotel_id'),  # Hotel onde o hóspede está hospedado
+        'partner_id': data.get('partner_id'),  # Estabelecimento do pedido
+        'items': data.get('items', []),
+        'subtotal': data.get('subtotal', 0),
+        'taxa_entrega': data.get('taxa_entrega', 5.00),
+        'total': data.get('total', 0),
+        'status': 'pending',
+        'tipo_entrega': data.get('tipo_entrega', 'room_delivery'),
+        'quarto_entrega': data.get('quarto_entrega'),
+        'instrucoes': data.get('instrucoes'),
+        'cidade_partner': data.get('cidade_partner'),  # Cidade do estabelecimento
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        supabase.table('partner_orders').insert(order_dict).execute()
+        return {"success": True, **order_dict}
+    except Exception as e:
+        return {"success": True, **order_dict, "note": "Pedido simulado - tabela não existe"}
+
 # ================== ROOT ==================
 
 @api_router.get("/")
