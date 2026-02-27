@@ -83,6 +83,7 @@ function AppRoutes() {
         <Route path="/hr" element={<HrManagementPage />} />
         <Route path="/events" element={<EventsManagementPage />} />
         <Route path="/subscriptions" element={<SubscriptionsPage />} />
+        <Route path="/subscription-management" element={<SubscriptionManagementPage />} />
         <Route path="/loyalty" element={<LoyaltyPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/mobile-guest" element={<MobileGuestPage />} />
