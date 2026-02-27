@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class HestiaAPITester:
-    def __init__(self, base_url="http://localhost:8001"):
+    def __init__(self, base_url="https://708dbcce-f0a1-4109-8a30-af2c8fcec6f0.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
@@ -14,6 +14,7 @@ class HestiaAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.failed_tests = []
+        self.current_user = None
 
     def log_test(self, name, success, details=""):
         """Log test results"""
