@@ -6312,8 +6312,9 @@ async def admin_update_subscription(hotel_id: str, data: dict, current_user: dic
 async def root():
     return {"message": "Hestia Hotel Management Platform API", "version": "3.0.0-b2b", "database": "Supabase", "multi_tenant": True}
 
-# Include the router
-app.include_router(api_router)
+# Include the routers
+app.include_router(public_router)  # Public endpoints (no auth required)
+app.include_router(api_router)     # Protected endpoints
 
 app.add_middleware(
     CORSMiddleware,
