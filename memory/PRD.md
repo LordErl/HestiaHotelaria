@@ -1,298 +1,76 @@
-# Hestia - Plataforma de Gestão Hoteleira Premium
-## Product Requirements Document (PRD)
+# Hestia B2B Multi-Tenant Platform - PRD
 
----
+## Original Problem Statement
+Adaptação da plataforma Hestia para modelo B2B multi-tenant:
+- Admin Hestia (admin@hestia.com) vê todos os dados de todos os hotéis
+- Novos usuários podem cadastrar novos hotéis (clientes B2B) com dados da pessoa jurídica
+- Cada hotel tem seu admin que só vê dados do seu hotel
+- Módulo de manutenção integrado
+- Marketplace central com restaurantes e serviços
 
-## ✅ Status Atual - Fevereiro 2026
+## User Personas
+1. **Super Admin Hestia** - Gerencia toda a plataforma, vê todos hotéis, usuários, métricas globais
+2. **Hotel Admin** - Gerencia seu hotel específico, não vê dados de outros hotéis
+3. **Hotel Staff** - Funcionários com acesso limitado ao seu hotel
+4. **Hóspede** - Cliente final usando apps mobile
 
-### Módulos Implementados e Funcionais (100%)
+## Core Requirements (Static)
+- [x] Isolamento multi-tenant por hotel_id
+- [x] Dashboard centralizado para Super Admin
+- [x] Cadastro de hotéis com dados de pessoa jurídica (CNPJ, responsável legal, etc)
+- [x] Módulo de manutenção
+- [x] Marketplace central
 
-| Módulo | Status | Descrição |
-|--------|--------|-----------|
-| **PMS Core** | ✅ | Dashboard, Quartos, Reservas, Check-in/Out |
-| **Dashboard Real-Time** | ✅ NOVO | WebSocket com atualizações automáticas a cada 30s |
-| **Notificações Push** | ✅ NOVO | Centro de notificações, inscrição push, histórico |
-| **Housekeeping** | ✅ | Gestão de tarefas de limpeza |
-| **Motor de Reservas** | ✅ TESTADO | Booking público com pagamento integrado (Stripe + MP PIX) |
-| **Portal do Hóspede** | ✅ | Acesso por código, chat com IA |
-| **Pagamentos** | ✅ TESTADO | Stripe, Mercado Pago PIX, CORA |
-| **Revenue Management** | ✅ | KPIs, gráficos, previsão, precificação dinâmica |
-| **Marketplace** | ✅ | Catálogo, carrinho, checkout, pedidos |
-| **Admin Marketplace** | ✅ | Gestão de produtos e pedidos |
-| **Assistentes IA** | ✅ | Hestia (gestão) + Jarbas (hóspedes) |
-| **Integração OTAs** | ✅ PAINEL | Booking, Expedia, Airbnb, Decolar (painel admin pronto) |
-| **Gestão de Eventos** | ✅ | Espaços e agendamento de eventos |
-| **Gestão de RH** | ✅ | Funcionários, escalas, férias |
-| **Emails Transacionais** | ✅ | Confirmação de reserva e pedidos via Resend |
-| **Assinaturas** | ✅ | Planos recorrentes no Marketplace |
-| **Programa de Fidelidade** | ✅ TESTADO | 4 tiers, 5 recompensas, gestão de membros |
-| **Relatórios Avançados** | ✅ TESTADO | 6 KPIs, 4 abas com gráficos interativos, Export CSV/JSON |
-| **App Mobile Hóspede** | ✅ NOVO | React Native - 8 telas completas |
-| **App Mobile Staff** | ✅ NOVO | React Native - 8 telas completas |
+## What's Been Implemented (2026-02-27)
 
----
+### Backend (server.py)
+- ✅ Função `is_platform_admin()` para identificar admin da plataforma
+- ✅ Função `can_access_hotel()` para verificar acesso a hotel específico
+- ✅ Filtro em `GET /api/hotels` - admins de hotel só veem seu hotel
+- ✅ `POST /api/platform/register-hotel` - Registro completo de novo hotel com PJ
+- ✅ `GET /api/platform/dashboard` - Dashboard da plataforma
+- ✅ `GET /api/platform/hotels` - Lista todos os hotéis
+- ✅ `GET /api/platform/hotels/{id}` - Detalhes de um hotel
+- ✅ `GET /api/platform/users` - Lista todos os usuários
+- ✅ `GET /api/platform/organizations` - Lista organizações (PJ)
+- ✅ Módulo de Manutenção (CRUD completo)
+- ✅ Marketplace Partners (mock data se tabela não existir)
 
-## Implementações Recentes (21/02/2026)
+### Frontend
+- ✅ `PlatformAdminPage.js` - Painel completo do admin Hestia com abas
+- ✅ `HotelRegistrationPage.js` - Wizard de 6 passos para registro de hotel
+- ✅ `MaintenancePage.js` - Gestão de solicitações de manutenção
+- ✅ Sidebar atualizada com link "Admin Hestia" para super admins
+- ✅ AuthContext com `isPlatformAdmin` flag
 
-### App Mobile do Staff (React Native) ✅ COMPLETO
+### Database (Supabase)
+- ✅ Schema SQL para `organizations`, `maintenance_requests`, `marketplace_partners`, `partner_products`, `partner_orders`
 
-**Localização:** `/app/mobile/hestia-staff/`
+## Test Results
+- ✅ Login admin@hestia.com funciona
+- ✅ Registro de novo hotel funciona (Hotel Teste SP criado)
+- ✅ Isolamento: admin do hotel só vê seu hotel
+- ✅ Platform dashboard carrega com métricas
+- ✅ Página de manutenção funciona
 
-**8 Telas Implementadas:**
-1. **LoginScreen** - Login por email/senha (admin@hestia.com)
-2. **DashboardScreen** - Dashboard com stats, check-ins/outs do dia, tarefas
-3. **TasksScreen** - Minhas tarefas com filtros e ações (iniciar/concluir)
-4. **HousekeepingScreen** - Grid de quartos com status, tarefas de limpeza
-5. **RequestsScreen** - Solicitações de hóspedes com prioridade
-6. **CheckinsScreen** - Lista de check-ins do dia
-7. **CheckoutsScreen** - Lista de check-outs com resumo financeiro
-8. **ProfileScreen** - Perfil do funcionário, configurações, logout
+## Prioritized Backlog
 
-**Novos Endpoints Backend:**
-- `GET /api/check-in-out/checkins/{hotel_id}` - Check-ins do dia
-- `GET /api/check-in-out/checkouts/{hotel_id}` - Check-outs do dia
-- `POST /api/check-in-out/checkin/{id}` - Realizar check-in
-- `POST /api/check-in-out/checkout/{id}` - Realizar check-out
-- `GET /api/rooms/{hotel_id}` - Listar quartos
-- `PATCH /api/rooms/{id}/status` - Atualizar status
-- `GET /api/housekeeping/tasks/{hotel_id}` - Tarefas housekeeping
-- `PATCH /api/housekeeping/tasks/{id}` - Atualizar tarefa
-- `GET /api/guest-requests/{hotel_id}` - Solicitações de hóspedes
-- `PATCH /api/guest-requests/{id}` - Atualizar solicitação
+### P0 - Critical
+- [ ] Executar SQL de criação das novas tabelas no Supabase (organizations, maintenance_requests, etc)
+- [ ] Gestão de planos/assinaturas dos hotéis
 
-**Testes:** 17/17 testes passaram (100%)
+### P1 - High Priority
+- [ ] App mobile Staff separado por hotel
+- [ ] App mobile Hóspede com marketplace
+- [ ] Notificações push entre hotéis e marketplace
 
----
+### P2 - Medium Priority
+- [ ] Relatórios financeiros consolidados
+- [ ] Gestão de comissões do marketplace
+- [ ] Integração com gateways de pagamento por hotel
 
-### App Mobile do Hóspede (React Native) ✅ COMPLETO
-
-**Localização:** `/app/mobile/hestia-guest/`
-
-**8 Telas Implementadas:**
-1. **LoginScreen** - Login por código de reserva (ex: HESFC0FAA)
-2. **HomeScreen** - Dashboard com info da estadia, serviços rápidos, fidelidade
-3. **ServicesScreen** - 8 serviços do hotel (Room Service, Spa, Concierge, etc.)
-4. **ChatScreen** - Chat com IA (Jarbas) e respostas rápidas
-5. **ProfileScreen** - Perfil, programa de fidelidade, recompensas
-6. **ReservationsScreen** - Minhas reservas (próximas e histórico)
-7. **NewBookingScreen** - Criar nova reserva em 4 etapas
-8. **AccountScreen** - Conta corrente, transações, saldo
-
-**Novos Endpoints Backend:**
-- `POST /api/guest-portal/access` - Login por código
-- `GET /api/guest-portal/reservations/{guest_id}` - Listar reservas
-- `GET /api/guest-portal/services/{hotel_id}` - Serviços disponíveis
-- `POST /api/guest-portal/service-request` - Solicitar serviço
-- `GET /api/guest-portal/requests/{guest_id}` - Solicitações
-- `GET /api/guest-portal/loyalty/{guest_id}` - Info fidelidade
-- `GET /api/guest-portal/account/{guest_id}` - Conta corrente
-- `POST /api/guest-portal/booking` - Criar reserva
-
-**Testes:** 14/16 testes passaram (87.5%)
-
----
-
-## Implementações Anteriores (19/02/2026)
-
-### Validação Completa dos Módulos (Testado com Testing Agent)
-
-#### Programa de Fidelidade (`/loyalty`) ✅ TESTADO
-- **4 Tiers**: Bronze (1x), Silver (1.25x), Gold (1.5x), Platinum (2x)
-- **5 Recompensas**: Diária Grátis (2500pts), Upgrade (1000pts), Spa (800pts), Jantar (1200pts), Transfer (500pts)
-- **3 Abas**: Recompensas, Membros, Tiers
-- Dashboard com 5 estatísticas (Membros, Ativos Mês, Pontos Emitidos, Resgatados Mês, Média/Membro)
-
-#### Relatórios Avançados (`/reports`) ✅ TESTADO
-- **6 KPIs** com indicadores de tendência: Receita Total, Ocupação, ADR, RevPAR, Reservas, Estadia Média
-- **4 Abas**: Receita, Ocupação, Hóspedes, Canais
-- Gráficos interativos: Área (receita), Barras (ocupação), Pizza (composição)
-- Filtro por período: Semana, Mês, Trimestre, Ano
-- Análise de canais com comissões e insights
-- **Exportação CSV/JSON**: Dropdown com 6 opções de exportação
-
-#### Motor de Reservas (`/booking`) ✅ TESTADO
-- **5 Passos**: Busca → Seleção de Quarto → Dados do Hóspede → Pagamento → Confirmação
-- 3 tipos de quarto: Suite Deluxe Vista Mar, Suite Presidencial, Quarto Superior
-- **3 Formas de Pagamento**: PIX (Mercado Pago), Cartão (Mercado Pago), Cartão Internacional (Stripe)
-- QR Code PIX com copia e cola
-- Resumo da reserva em tempo real
-- Email de confirmação automático
-
-#### App Mobile Hóspede (`/mobile-guest`) - WEB
-- Dashboard personalizado com informações do quarto
-- Pontos de fidelidade
-- 6 serviços: Room Service, Spa, Concierge, Transporte, Lavanderia, Manutenção
-- Nota: Implementado como página web responsiva, não React Native nativo
-
-#### App Mobile Staff (`/mobile-staff`) - WEB  
-- Dashboard com estatísticas do dia
-- Check-ins e Check-outs pendentes
-- Lista de tarefas e solicitações
-- Nota: Implementado como página web responsiva, não React Native nativo
-
----
-
-## URLs da Aplicação (24 páginas)
-
-| Rota | Descrição |
-|------|-----------|
-| /login | Login administrativo |
-| / | Dashboard |
-| /reservations | Gestão de reservas |
-| /rooms | Mapa de quartos |
-| /guests | Lista de hóspedes |
-| /check-in-out | Check-in/Check-out |
-| /housekeeping | Tarefas de limpeza |
-| /revenue | Revenue Management |
-| /marketplace | Marketplace Hestia |
-| /orders | Histórico de Pedidos |
-| /marketplace-admin | Admin do Marketplace |
-| /chat | Chat com IA |
-| /payment-settings | Configurações de Pagamento |
-| /booking | Motor de Reservas (público) |
-| /guest-portal | Portal do Hóspede |
-| /ota-integration | Integração com OTAs |
-| /hr | Gestão de Pessoas (RH) |
-| /events | Gestão de Eventos & Salas |
-| /subscriptions | Assinaturas Recorrentes |
-| /loyalty | Programa de Fidelidade |
-| /reports | Relatórios Avançados |
-| /mobile-guest | App Mobile Hóspede |
-| /mobile-staff | App Mobile Staff |
-
----
-
-## Credentials de Teste
-
-- **Admin**: admin@hestia.com / admin123
-- **Hotel Demo**: Grand Hestia Palace
-- **Hotel ID**: 480f0940-81a5-4ca7-806d-77ed790c740a
-
-### Integrações Configuradas
-
-| Serviço | Status | Notas |
-|---------|--------|-------|
-| Supabase | ✅ | Banco de dados PostgreSQL |
-| Stripe | ✅ | Pagamentos com cartão (teste) |
-| Mercado Pago | ✅ | PIX e cartão |
-| CORA | ⚠️ | PIX (requer certificados mTLS) |
-| Resend | ✅ | Email transacional funcionando |
-| Gemini | ✅ | IA para assistentes |
-
----
-
-## Testes Realizados
-
-### Iteration 10 - WebSocket + Push Notifications (21/02/2026)
-- **Backend**: 10/10 testes passaram (100%)
-- **Features Validadas**:
-  - WebSocket /ws/dashboard/{hotel_id} para atualizações em tempo real
-  - GET /api/push/vapid-key - Chave pública VAPID
-  - POST /api/push/subscribe - Registro de inscrição push
-  - GET/POST /api/notifications/{hotel_id} - CRUD de notificações
-  - POST /api/push/send - Envio de push para dispositivos
-- **Frontend**: Badge de status WebSocket, Centro de Notificações com popover
-
-### Iteration 11 - Guest Mobile App Backend (21/02/2026)
-- **Backend**: 14/16 testes passaram (87.5%)
-- **Novos Endpoints**:
-  - POST /api/guest-portal/access - Login por código
-  - GET /api/guest-portal/reservations/{guest_id} - Listar reservas
-  - GET /api/guest-portal/services/{hotel_id} - Serviços disponíveis
-  - POST /api/guest-portal/service-request - Solicitar serviço
-  - GET /api/guest-portal/requests/{guest_id} - Solicitações
-  - GET /api/guest-portal/loyalty/{guest_id} - Info fidelidade
-  - GET /api/guest-portal/account/{guest_id} - Conta corrente
-  - POST /api/guest-portal/booking - Criar reserva
-- **Pendente**: Tabela service_requests no Supabase (script em `/app/scripts/service_requests_schema.sql`)
-
-### Iteration 12 - Staff Mobile App Backend (21/02/2026)
-- **Backend**: 17/17 testes passaram (100%)
-- **Novos Endpoints**:
-  - GET /api/check-in-out/checkins/{hotel_id} - Check-ins do dia
-  - GET /api/check-in-out/checkouts/{hotel_id} - Check-outs do dia
-  - POST /api/check-in-out/checkin/{id} - Realizar check-in
-  - POST /api/check-in-out/checkout/{id} - Realizar check-out
-  - GET /api/rooms/{hotel_id} - Listar quartos
-  - PATCH /api/rooms/{id}/status - Atualizar status do quarto
-  - GET /api/housekeeping/tasks/{hotel_id} - Tarefas housekeeping
-  - PATCH /api/housekeeping/tasks/{id} - Atualizar tarefa
-  - GET /api/guest-requests/{hotel_id} - Solicitações de hóspedes
-  - PATCH /api/guest-requests/{id} - Atualizar solicitação
-- **Bug Fix**: Corrigido erro 520 no login quando usuário não existe
-- **Pendente**: Tabela housekeeping_tasks no Supabase (script em `/app/scripts/housekeeping_tasks_schema.sql`)
-
-### Iteration 9 - Backend + Frontend New Features (19/02/2026)
-- **Backend**: 10/10 testes passaram (100%)
-- **Features Validadas**:
-  - OTA test connection (POST /api/ota/channels/{id}/test)
-  - OTA sync real (POST /api/ota/channels/{id}/sync-real)
-  - Reports export JSON/CSV (GET /api/reports/export/{hotel_id})
-  - Loyalty demo data (POST /api/loyalty/demo-data/{hotel_id})
-  - Billing plans (GET /api/billing/plans)
-- **Frontend**: Botões de teste OTA, dropdown de exportação em Reports
-
-### Iteration 8 - Frontend Testing (19/02/2026)
-- **Frontend**: 100% (Todas as 3 páginas carregam e funcionam corretamente)
-- **Páginas Testadas**: Loyalty, Reports, Booking Engine
-- **Resultado**: PASSED
-
-### Iteration 7 - Backend + Frontend
-- **Backend**: 16/16 testes passaram (100%)
-- **Frontend**: 4/4 novas páginas funcionando (100%)
-
-### Features Verificadas
-- Loyalty: Config, Stats, Members, Add Points, Redeem
-- Reports: Overview, Revenue, Occupancy, Guests, Channels
-- Mobile Guest: Dashboard, Services, Requests
-- Mobile Staff: Dashboard, Tasks, Requests, Alerts
-
----
-
-## Próximos Passos
-
-### P0 - Pendências de Banco de Dados
-- **Tabela Service Requests**: Executar script `/app/scripts/service_requests_schema.sql` no Supabase SQL Editor
-- **Tabela Housekeeping Tasks**: Executar script `/app/scripts/housekeeping_tasks_schema.sql` no Supabase SQL Editor
-
-### P1 - Stripe Billing (Cobrança Recorrente)
-- Implementar lógica de cobrança recorrente com Stripe Billing
-- Criar interface de gerenciamento de assinaturas
-
-### P1 - Integrações Reais
-- **OTA Real Sync**: Obter credenciais de API de Booking.com, Expedia para conexão real
-- **Push Notifications Real**: Gerar chaves VAPID próprias e integrar pywebpush
-- **CORA**: Integração com certificados mTLS
-
-### P2 - Melhorias
-- ~~Dashboard em tempo real com WebSockets~~ ✅ IMPLEMENTADO
-- ~~Notificações push~~ ✅ IMPLEMENTADO
-- ~~Exportação de relatórios CSV/JSON~~ ✅ IMPLEMENTADO
-- Persistir notificações e subscriptions no banco de dados (atualmente em memória)
-
----
-
-## Tech Stack
-
-- **Backend**: FastAPI + Supabase Python Client
-- **Database**: Supabase PostgreSQL
-- **Frontend**: React 19 + Tailwind CSS + Shadcn UI
-- **AI**: Gemini 3 Flash
-- **Payments**: Stripe, Mercado Pago, CORA
-- **Email**: Resend
-- **Charts**: Recharts
-
----
-
-## APIs Mockadas/Simuladas
-
-| API | Status | Descrição |
-|-----|--------|-----------|
-| OTA Sync | MOCKED | Retorna dados simulados de sincronização |
-| Reports Data | MOCKED | Gera dados aleatórios para demonstração |
-| Mobile Guest | MOCKED | Dados de hóspede simulados |
-| Loyalty Stats | REAL | Retorna 0 membros (nenhum membro cadastrado ainda) |
-
----
-
-*Atualizado: 19/02/2026 - Após validação com Testing Agent*
+## Next Tasks
+1. Executar o SQL `b2b_multitenant_schema.sql` no Supabase para criar as tabelas
+2. Implementar gestão de contratos/assinaturas
+3. Configurar parâmetros específicos por hotel (payment providers, etc)
+4. Desenvolver fluxo de marketplace completo
