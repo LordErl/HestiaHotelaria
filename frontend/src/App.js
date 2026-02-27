@@ -49,6 +49,7 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/booking" element={<BookingEnginePage />} />
       <Route path="/guest-portal" element={<GuestPortalPage />} />
+      <Route path="/register-hotel" element={<HotelRegistrationPage />} />
       
       <Route 
         path="/login" 
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/guests" element={<GuestsPage />} />
         <Route path="/check-in-out" element={<CheckInOutPage />} />
         <Route path="/housekeeping" element={<HousekeepingPage />} />
+        <Route path="/maintenance" element={<MaintenancePage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/payment-settings" element={<PaymentSettingsPage />} />
         <Route path="/revenue" element={<RevenueManagementPage />} />
@@ -81,6 +83,7 @@ function AppRoutes() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/mobile-guest" element={<MobileGuestPage />} />
         <Route path="/mobile-staff" element={<MobileStaffPage />} />
+        <Route path="/platform-admin" element={<PlatformAdminPage />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
