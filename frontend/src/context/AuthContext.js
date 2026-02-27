@@ -145,7 +145,8 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       seedDemoData,
-      isAuthenticated: !!user && !!token
+      isAuthenticated: !!user && !!token,
+      isPlatformAdmin: user?.is_platform_admin || user?.email === 'admin@hestia.com'
     }}>
       {children}
     </AuthContext.Provider>
