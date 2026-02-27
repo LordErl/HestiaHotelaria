@@ -1,76 +1,89 @@
 # Hestia B2B Multi-Tenant Platform - PRD
 
 ## Original Problem Statement
-Adaptação da plataforma Hestia para modelo B2B multi-tenant:
+Plataforma Hestia B2B multi-tenant para gestão hoteleira centralizada:
 - Admin Hestia (admin@hestia.com) vê todos os dados de todos os hotéis
-- Novos usuários podem cadastrar novos hotéis (clientes B2B) com dados da pessoa jurídica
-- Cada hotel tem seu admin que só vê dados do seu hotel
-- Módulo de manutenção integrado
-- Marketplace central com restaurantes e serviços
+- Novos usuários cadastram hotéis como clientes B2B com dados PJ
+- Cada hotel tem admin que só vê dados do seu hotel
+- Staff de um hotel não pode ver dados de outro
+- Hóspedes podem ver ofertas de todos estabelecimentos filtrados por região
+- Dashboard de receita B2B com MRR, ARR, Churn, LTV
 
 ## User Personas
-1. **Super Admin Hestia** - Gerencia toda a plataforma, vê todos hotéis, usuários, métricas globais
-2. **Hotel Admin** - Gerencia seu hotel específico, não vê dados de outros hotéis
-3. **Hotel Staff** - Funcionários com acesso limitado ao seu hotel
-4. **Hóspede** - Cliente final usando apps mobile
+1. **Super Admin Hestia** - Gerencia toda a plataforma
+2. **Hotel Admin** - Gerencia seu hotel específico
+3. **Hotel Staff** (Manager, Receptionist, Housekeeper) - Acesso limitado ao seu hotel
+4. **Hóspede** - Acesso ao marketplace central
 
-## Core Requirements (Static)
-- [x] Isolamento multi-tenant por hotel_id
-- [x] Dashboard centralizado para Super Admin
-- [x] Cadastro de hotéis com dados de pessoa jurídica (CNPJ, responsável legal, etc)
-- [x] Módulo de manutenção
-- [x] Marketplace central
+## Test Users (Created via /api/seed-test-users)
+| Email | Password | Role | Hotel |
+|-------|----------|------|-------|
+| admin@hestia.com | admin123 | Platform Admin | Todos |
+| admin@hotelteste.com | teste123 | Hotel Admin | Hotel Teste SP |
+| gerente@hotel1.com | teste123 | Manager | Grand Hestia Palace |
+| recepcionista@hotel1.com | teste123 | Receptionist | Grand Hestia Palace |
+| camareira@hotel1.com | teste123 | Housekeeper | Grand Hestia Palace |
+| gerente@hotel2.com | teste123 | Manager | Hotel Teste SP |
+| recepcionista@hotel2.com | teste123 | Receptionist | Hotel Teste SP |
 
 ## What's Been Implemented (2026-02-27)
 
-### Backend (server.py)
-- ✅ Função `is_platform_admin()` para identificar admin da plataforma
-- ✅ Função `can_access_hotel()` para verificar acesso a hotel específico
-- ✅ Filtro em `GET /api/hotels` - admins de hotel só veem seu hotel
-- ✅ `POST /api/platform/register-hotel` - Registro completo de novo hotel com PJ
-- ✅ `GET /api/platform/dashboard` - Dashboard da plataforma
-- ✅ `GET /api/platform/hotels` - Lista todos os hotéis
-- ✅ `GET /api/platform/hotels/{id}` - Detalhes de um hotel
-- ✅ `GET /api/platform/users` - Lista todos os usuários
-- ✅ `GET /api/platform/organizations` - Lista organizações (PJ)
-- ✅ Módulo de Manutenção (CRUD completo)
-- ✅ Marketplace Partners (mock data se tabela não existir)
+### Backend Isolation (server.py)
+- ✅ `is_platform_admin()` - Identifica admin da plataforma
+- ✅ `can_access_hotel()` - Verifica acesso a hotel específico
+- ✅ Filtro por hotel_id em: GET /hotels, /rooms, /guests, /reservations
+- ✅ Staff só vê dados do seu próprio hotel
 
-### Frontend
-- ✅ `PlatformAdminPage.js` - Painel completo do admin Hestia com abas
-- ✅ `HotelRegistrationPage.js` - Wizard de 6 passos para registro de hotel
-- ✅ `MaintenancePage.js` - Gestão de solicitações de manutenção
-- ✅ Sidebar atualizada com link "Admin Hestia" para super admins
-- ✅ AuthContext com `isPlatformAdmin` flag
+### Dashboard B2B (/api/platform/revenue)
+- ✅ MRR - Receita Recorrente Mensal
+- ✅ ARR - Receita Anual
+- ✅ GMV - Volume Bruto de Mercadorias
+- ✅ Churn Rate - Taxa de cancelamento
+- ✅ ARPU - Receita média por hotel
+- ✅ LTV - Lifetime Value (24 meses)
+- ✅ Receita por plano (Starter, Professional, Enterprise)
+- ✅ Comissão da plataforma (10% do GMV)
 
-### Database (Supabase)
-- ✅ Schema SQL para `organizations`, `maintenance_requests`, `marketplace_partners`, `partner_products`, `partner_orders`
+### Marketplace Hóspedes (/api/guest/marketplace)
+- ✅ Lista todos os estabelecimentos parceiros
+- ✅ Filtro por cidade/região
+- ✅ Filtro por tipo (restaurant, spa, shop)
+- ✅ Dados mock com SP e RJ
+- ✅ Carrinho de compras
+- ✅ Criação de pedidos
+
+### Frontend Pages
+- ✅ `PlatformAdminPage.js` - Painel admin Hestia
+- ✅ `HotelRegistrationPage.js` - Wizard de registro
+- ✅ `MaintenancePage.js` - Gestão de manutenção
+- ✅ `RevenueB2BPage.js` - Dashboard de receita B2B
+- ✅ `GuestMarketplacePage.js` - Marketplace para hóspedes
 
 ## Test Results
-- ✅ Login admin@hestia.com funciona
-- ✅ Registro de novo hotel funciona (Hotel Teste SP criado)
-- ✅ Isolamento: admin do hotel só vê seu hotel
-- ✅ Platform dashboard carrega com métricas
-- ✅ Página de manutenção funciona
+- ✅ Isolamento: gerente@hotel1.com só vê Grand Hestia Palace
+- ✅ Isolamento: gerente@hotel2.com só vê Hotel Teste SP
+- ✅ Platform admin vê todos os hotéis
+- ✅ Dashboard B2B com métricas funcionando
+- ✅ Marketplace com 6 estabelecimentos em SP e RJ
+- ✅ Filtro por cidade funcionando
 
 ## Prioritized Backlog
 
 ### P0 - Critical
-- [ ] Executar SQL de criação das novas tabelas no Supabase (organizations, maintenance_requests, etc)
-- [ ] Gestão de planos/assinaturas dos hotéis
+- [ ] Criar tabelas no Supabase (organizations, maintenance_requests, marketplace_partners)
+- [ ] Implementar gestão de contratos/assinaturas
 
 ### P1 - High Priority
-- [ ] App mobile Staff separado por hotel
-- [ ] App mobile Hóspede com marketplace
-- [ ] Notificações push entre hotéis e marketplace
+- [ ] Checkout de pedidos do marketplace
+- [ ] Notificações entre estabelecimentos
+- [ ] App mobile integrado
 
 ### P2 - Medium Priority
 - [ ] Relatórios financeiros consolidados
-- [ ] Gestão de comissões do marketplace
+- [ ] Gestão de comissões automática
 - [ ] Integração com gateways de pagamento por hotel
 
 ## Next Tasks
-1. Executar o SQL `b2b_multitenant_schema.sql` no Supabase para criar as tabelas
-2. Implementar gestão de contratos/assinaturas
-3. Configurar parâmetros específicos por hotel (payment providers, etc)
-4. Desenvolver fluxo de marketplace completo
+1. Executar SQL de criação das tabelas no Supabase
+2. Implementar checkout completo do marketplace
+3. Adicionar gestão de planos/assinaturas
