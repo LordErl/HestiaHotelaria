@@ -26,6 +26,9 @@ import LoyaltyPage from './pages/LoyaltyPage';
 import ReportsPage from './pages/ReportsPage';
 import MobileGuestPage from './pages/MobileGuestPage';
 import MobileStaffPage from './pages/MobileStaffPage';
+import PlatformAdminPage from './pages/PlatformAdminPage';
+import HotelRegistrationPage from './pages/HotelRegistrationPage';
+import MaintenancePage from './pages/MaintenancePage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
