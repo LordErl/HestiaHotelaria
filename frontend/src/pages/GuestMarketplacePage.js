@@ -364,7 +364,7 @@ const GuestMarketplacePage = () => {
               </button>
             </div>
 
-            <div className="p-6 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            <div className="p-6 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
               {cart.length === 0 ? (
                 <div className="text-center py-12">
                   <ShoppingBag className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -406,19 +406,20 @@ const GuestMarketplacePage = () => {
 
             {cart.length > 0 && (
               <div className="p-6 border-t border-white/10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-400">Subtotal</span>
                   <span className="text-white font-medium">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-400">Taxa de entrega</span>
                   <span className="text-white font-medium">R$ 5,00</span>
                 </div>
-                <div className="flex items-center justify-between mb-6 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
                   <span className="text-white font-semibold">Total</span>
                   <span className="text-gold text-xl font-playfair">R$ {(cartTotal + 5).toFixed(2)}</span>
                 </div>
                 <button
+                  onClick={() => setShowCheckout(true)}
                   className="w-full py-3 bg-gold text-obsidian font-semibold rounded-lg hover:bg-gold/90"
                   data-testid="checkout-button"
                 >
@@ -426,6 +427,183 @@ const GuestMarketplacePage = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-velvet rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-playfair text-white">Finalizar Pedido</h2>
+              <button onClick={() => setShowCheckout(false)} className="text-slate-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCheckout} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Seu Nome *</label>
+                <input
+                  type="text"
+                  value={checkoutData.guest_name}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, guest_name: e.target.value }))}
+                  required
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-gold/50 focus:outline-none"
+                  placeholder="João Silva"
+                  data-testid="checkout-name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Email *</label>
+                <input
+                  type="email"
+                  value={checkoutData.guest_email}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, guest_email: e.target.value }))}
+                  required
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-gold/50 focus:outline-none"
+                  placeholder="joao@email.com"
+                  data-testid="checkout-email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Telefone</label>
+                <input
+                  type="text"
+                  value={checkoutData.guest_phone}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, guest_phone: e.target.value }))}
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-gold/50 focus:outline-none"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Número do Quarto</label>
+                <input
+                  type="text"
+                  value={checkoutData.room_number}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, room_number: e.target.value }))}
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-gold/50 focus:outline-none"
+                  placeholder="101"
+                  data-testid="checkout-room"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Tipo de Entrega</label>
+                <select
+                  value={checkoutData.delivery_type}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, delivery_type: e.target.value }))}
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-gold/50 focus:outline-none"
+                >
+                  <option value="room_delivery">Entrega no Quarto (+R$ 5,00)</option>
+                  <option value="pickup">Retirada no Local</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Forma de Pagamento</label>
+                <select
+                  value={checkoutData.payment_method}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-gold/50 focus:outline-none"
+                  data-testid="checkout-payment"
+                >
+                  <option value="room_charge">Débito no Quarto</option>
+                  <option value="pix">PIX</option>
+                  <option value="credit_card">Cartão de Crédito</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Instruções (opcional)</label>
+                <textarea
+                  value={checkoutData.instructions}
+                  onChange={(e) => setCheckoutData(prev => ({ ...prev, instructions: e.target.value }))}
+                  className="w-full bg-obsidian/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-gold/50 focus:outline-none resize-none"
+                  placeholder="Ex: Sem cebola, molho à parte..."
+                  rows={2}
+                />
+              </div>
+
+              {/* Order Summary */}
+              <div className="bg-obsidian/50 rounded-lg p-4">
+                <h3 className="text-white font-semibold mb-3">Resumo do Pedido</h3>
+                <div className="space-y-2 text-sm">
+                  {cart.map(item => (
+                    <div key={item.id} className="flex justify-between">
+                      <span className="text-slate-400">{item.quantity}x {item.nome}</span>
+                      <span className="text-white">R$ {(item.preco * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t border-white/10 flex justify-between">
+                    <span className="text-slate-400">Subtotal</span>
+                    <span className="text-white">R$ {cartTotal.toFixed(2)}</span>
+                  </div>
+                  {checkoutData.delivery_type === 'room_delivery' && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Entrega</span>
+                      <span className="text-white">R$ 5,00</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-white/10 flex justify-between">
+                    <span className="text-white font-semibold">Total</span>
+                    <span className="text-gold font-semibold">
+                      R$ {(cartTotal + (checkoutData.delivery_type === 'room_delivery' ? 5 : 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={checkoutLoading}
+                className="w-full py-3 bg-gold text-obsidian font-semibold rounded-lg hover:bg-gold/90 disabled:opacity-50"
+                data-testid="confirm-checkout"
+              >
+                {checkoutLoading ? 'Processando...' : 'Confirmar Pedido'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {orderSuccess && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-velvet rounded-xl max-w-md w-full p-8 text-center">
+            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h2 className="text-2xl font-playfair text-white mb-2">Pedido Confirmado!</h2>
+            <p className="text-slate-400 mb-6">{orderSuccess.estimated_delivery}</p>
+            
+            <div className="bg-obsidian/50 rounded-lg p-4 mb-6 text-left">
+              <div className="text-sm text-slate-400 mb-2">Pedidos:</div>
+              {orderSuccess.orders?.map((order, i) => (
+                <div key={i} className="text-white text-sm">
+                  {order.order_number} - {order.partner}
+                </div>
+              ))}
+              <div className="mt-3 pt-3 border-t border-white/10 flex justify-between">
+                <span className="text-slate-400">Total pago</span>
+                <span className="text-gold font-semibold">R$ {orderSuccess.checkout_summary?.total?.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setOrderSuccess(null);
+                setCart([]);
+                setShowCart(false);
+              }}
+              className="w-full py-3 bg-gold text-obsidian font-semibold rounded-lg hover:bg-gold/90"
+            >
+              Continuar Comprando
+            </button>
           </div>
         </div>
       )}
