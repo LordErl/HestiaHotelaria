@@ -20,11 +20,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [currentHotel, setCurrentHotel] = useState(null);
 
+  const isPlatformAdmin = user?.is_platform_admin || user?.email === 'admin@hestia.com';
+
   const fetchUser = useCallback(async (authToken) => {
     try {
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       const response = await axios.get(`${API}/auth/me`);
-      setUser(response.data);
+      const userData = response.data;
+      // Ensure is_platform_admin is set for admin@hestia.com
+      if (userData.email === 'admin@hestia.com') {
+        userData.is_platform_admin = true;
+      }
+      setUser(userData);
       
       // Fetch hotels and set current
       const hotelsRes = await axios.get(`${API}/hotels`);
