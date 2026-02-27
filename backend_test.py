@@ -74,7 +74,7 @@ class HestiaAPITester:
     def test_login(self, email="admin@hestia.com", password="admin123"):
         """Test login with existing user"""
         success, response = self.run_test(
-            "Login with existing user",
+            f"Login with {email}",
             "POST",
             "auth/login",
             200,
@@ -83,7 +83,9 @@ class HestiaAPITester:
         
         if success and 'access_token' in response:
             self.token = response['access_token']
+            self.current_user = response.get('user', {})
             print(f"   Token obtained: {self.token[:20]}...")
+            print(f"   User: {self.current_user.get('name', 'Unknown')} - Role: {self.current_user.get('role', 'Unknown')} - Hotel: {self.current_user.get('hotel_id', 'None')}")
             return True
         return False
 
