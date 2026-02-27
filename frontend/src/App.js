@@ -31,6 +31,7 @@ import HotelRegistrationPage from './pages/HotelRegistrationPage';
 import MaintenancePage from './pages/MaintenancePage';
 import RevenueB2BPage from './pages/RevenueB2BPage';
 import GuestMarketplacePage from './pages/GuestMarketplacePage';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage';
 import './App.css';
 
 const PublicRoute = ({ children }) => {
