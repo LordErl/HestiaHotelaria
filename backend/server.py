@@ -4882,11 +4882,532 @@ async def mark_notification_read(hotel_id: str, notification_id: str, current_us
     
     return {"message": "Notificação não encontrada"}
 
+# ================== B2B MULTI-TENANT - PLATFORM ADMIN ROUTES ==================
+
+class OrganizationCreate(BaseModel):
+    """Dados da Pessoa Jurídica do Hotel Cliente"""
+    razao_social: str
+    nome_fantasia: Optional[str] = None
+    cnpj: str
+    inscricao_estadual: Optional[str] = None
+    inscricao_municipal: Optional[str] = None
+    endereco_fiscal: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    cep: Optional[str] = None
+    pais: str = "Brasil"
+    telefone_comercial: Optional[str] = None
+    email_financeiro: Optional[str] = None
+    email_comercial: Optional[str] = None
+    responsavel_nome: str
+    responsavel_cpf: str
+    responsavel_cargo: Optional[str] = None
+    responsavel_telefone: Optional[str] = None
+    responsavel_email: Optional[str] = None
+    banco_nome: Optional[str] = None
+    banco_agencia: Optional[str] = None
+    banco_conta: Optional[str] = None
+    banco_tipo_conta: Optional[str] = None
+    banco_pix_chave: Optional[str] = None
+    plano_assinatura: str = "starter"
+
+class HotelRegistration(BaseModel):
+    """Registro completo de novo hotel na plataforma"""
+    # Dados do Hotel
+    hotel_name: str
+    hotel_address: str
+    hotel_city: str
+    hotel_country: str = "Brasil"
+    hotel_phone: Optional[str] = None
+    hotel_email: Optional[EmailStr] = None
+    hotel_stars: int = 3
+    hotel_description: Optional[str] = None
+    
+    # Dados do Admin do Hotel
+    admin_name: str
+    admin_email: EmailStr
+    admin_password: str
+    
+    # Dados da Organização (PJ)
+    organization: OrganizationCreate
+
+class MaintenanceRequestCreate(BaseModel):
+    hotel_id: str
+    room_id: Optional[str] = None
+    titulo: str
+    descricao: Optional[str] = None
+    categoria: Optional[str] = None
+    prioridade: str = "normal"
+
+class MaintenanceRequestUpdate(BaseModel):
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    resolucao: Optional[str] = None
+    custo_reparo: Optional[float] = None
+
+def is_platform_admin(user: dict) -> bool:
+    """Verifica se o usuário é admin da plataforma Hestia"""
+    return user.get('is_platform_admin', False) or user.get('email') == 'admin@hestia.com'
+
+def can_access_hotel(user: dict, hotel_id: str) -> bool:
+    """Verifica se o usuário pode acessar dados de um hotel específico"""
+    if is_platform_admin(user):
+        return True
+    return user.get('hotel_id') == hotel_id
+
+# ================== PLATFORM ADMIN - DASHBOARD GERAL ==================
+
+@api_router.get("/platform/dashboard")
+async def get_platform_dashboard(current_user: dict = Depends(get_current_user)):
+    """Dashboard geral da plataforma - apenas para admin Hestia"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    # Total de hotéis
+    hotels_result = supabase.table('hotels').select('id,name,city,is_active,created_at').execute()
+    hotels = hotels_result.data or []
+    
+    # Total de usuários
+    users_result = supabase.table('users').select('id,role,hotel_id,is_active').execute()
+    users = users_result.data or []
+    
+    # Total de organizações
+    try:
+        orgs_result = supabase.table('organizations').select('id,status_contrato,plano_assinatura,valor_mensalidade').execute()
+        organizations = orgs_result.data or []
+    except:
+        organizations = []
+    
+    # Total de reservas
+    res_result = supabase.table('reservations').select('id,total_amount,status,hotel_id').execute()
+    reservations = res_result.data or []
+    
+    # Calcular métricas
+    total_hotels = len(hotels)
+    active_hotels = len([h for h in hotels if h.get('is_active', True)])
+    total_users = len(users)
+    hotel_admins = len([u for u in users if u.get('role') == 'admin' and u.get('hotel_id')])
+    
+    total_reservations = len(reservations)
+    total_revenue = sum(float(r.get('total_amount') or 0) for r in reservations)
+    
+    # Receita por plano
+    revenue_by_plan = {}
+    for org in organizations:
+        plan = org.get('plano_assinatura', 'starter')
+        revenue_by_plan[plan] = revenue_by_plan.get(plan, 0) + 1
+    
+    # MRR (Monthly Recurring Revenue)
+    mrr = sum(float(org.get('valor_mensalidade') or 0) for org in organizations if org.get('status_contrato') == 'active')
+    
+    return {
+        "summary": {
+            "total_hotels": total_hotels,
+            "active_hotels": active_hotels,
+            "total_users": total_users,
+            "hotel_admins": hotel_admins,
+            "total_reservations": total_reservations,
+            "total_revenue": total_revenue
+        },
+        "financeiro": {
+            "mrr": mrr,
+            "hotels_by_plan": revenue_by_plan
+        },
+        "hotels": hotels[:10],  # Últimos 10 hotéis
+        "recent_users": [u for u in users if u.get('role') == 'admin'][:5]
+    }
+
+@api_router.get("/platform/hotels")
+async def get_platform_hotels(current_user: dict = Depends(get_current_user)):
+    """Lista todos os hotéis da plataforma - apenas para admin Hestia"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    hotels_result = supabase.table('hotels').select('*').order('created_at', desc=True).execute()
+    hotels = hotels_result.data or []
+    
+    # Enriquecer com dados da organização
+    enriched_hotels = []
+    for hotel in hotels:
+        try:
+            org_result = supabase.table('organizations').select('*').eq('hotel_id', hotel['id']).single().execute()
+            hotel['organization'] = org_result.data
+        except:
+            hotel['organization'] = None
+        
+        # Contar usuários do hotel
+        users_result = supabase.table('users').select('id').eq('hotel_id', hotel['id']).execute()
+        hotel['total_users'] = len(users_result.data or [])
+        
+        # Contar quartos
+        rooms_result = supabase.table('rooms').select('id').eq('hotel_id', hotel['id']).execute()
+        hotel['total_rooms'] = len(rooms_result.data or [])
+        
+        enriched_hotels.append(hotel)
+    
+    return enriched_hotels
+
+@api_router.get("/platform/hotels/{hotel_id}")
+async def get_platform_hotel_details(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Detalhes completos de um hotel - apenas para admin Hestia"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    # Hotel básico
+    hotel_result = supabase.table('hotels').select('*').eq('id', hotel_id).single().execute()
+    if not hotel_result.data:
+        raise HTTPException(status_code=404, detail="Hotel não encontrado")
+    
+    hotel = hotel_result.data
+    
+    # Organização
+    try:
+        org_result = supabase.table('organizations').select('*').eq('hotel_id', hotel_id).single().execute()
+        hotel['organization'] = org_result.data
+    except:
+        hotel['organization'] = None
+    
+    # Usuários
+    users_result = supabase.table('users').select('id,name,email,role,is_active,created_at').eq('hotel_id', hotel_id).execute()
+    hotel['users'] = users_result.data or []
+    
+    # Quartos
+    rooms_result = supabase.table('rooms').select('*').eq('hotel_id', hotel_id).execute()
+    hotel['rooms'] = rooms_result.data or []
+    
+    # Reservas recentes
+    res_result = supabase.table('reservations').select('*').eq('hotel_id', hotel_id).order('created_at', desc=True).limit(10).execute()
+    hotel['recent_reservations'] = res_result.data or []
+    
+    # Estatísticas
+    all_res = supabase.table('reservations').select('total_amount,status').eq('hotel_id', hotel_id).execute()
+    hotel['stats'] = {
+        'total_reservations': len(all_res.data or []),
+        'total_revenue': sum(float(r.get('total_amount') or 0) for r in (all_res.data or [])),
+        'total_rooms': len(hotel['rooms']),
+        'total_users': len(hotel['users'])
+    }
+    
+    return hotel
+
+@api_router.get("/platform/users")
+async def get_platform_users(current_user: dict = Depends(get_current_user)):
+    """Lista todos os usuários da plataforma - apenas para admin Hestia"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    users_result = supabase.table('users').select('id,name,email,role,hotel_id,is_active,created_at,is_platform_admin').order('created_at', desc=True).execute()
+    users = users_result.data or []
+    
+    # Enriquecer com nome do hotel
+    for user in users:
+        if user.get('hotel_id'):
+            try:
+                hotel_result = supabase.table('hotels').select('name').eq('id', user['hotel_id']).single().execute()
+                user['hotel_name'] = hotel_result.data.get('name') if hotel_result.data else None
+            except:
+                user['hotel_name'] = None
+    
+    return users
+
+@api_router.get("/platform/organizations")
+async def get_platform_organizations(current_user: dict = Depends(get_current_user)):
+    """Lista todas as organizações (dados PJ) - apenas para admin Hestia"""
+    if not is_platform_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao admin da plataforma")
+    
+    try:
+        orgs_result = supabase.table('organizations').select('*').order('created_at', desc=True).execute()
+        organizations = orgs_result.data or []
+        
+        # Enriquecer com nome do hotel
+        for org in organizations:
+            if org.get('hotel_id'):
+                try:
+                    hotel_result = supabase.table('hotels').select('name').eq('id', org['hotel_id']).single().execute()
+                    org['hotel_name'] = hotel_result.data.get('name') if hotel_result.data else None
+                except:
+                    org['hotel_name'] = None
+        
+        return organizations
+    except Exception as e:
+        logger.warning(f"Organizations table may not exist: {e}")
+        return []
+
+# ================== REGISTRO DE NOVO HOTEL (CLIENTE B2B) ==================
+
+@api_router.post("/platform/register-hotel")
+async def register_new_hotel(data: HotelRegistration):
+    """
+    Registro público de novo hotel na plataforma.
+    Cria: Hotel + Organização (PJ) + Admin do Hotel
+    """
+    # Verificar se email já existe
+    existing_user = supabase.table('users').select('id').eq('email', data.admin_email).execute()
+    if existing_user.data:
+        raise HTTPException(status_code=400, detail="Email já cadastrado na plataforma")
+    
+    # Verificar se CNPJ já existe
+    try:
+        existing_org = supabase.table('organizations').select('id').eq('cnpj', data.organization.cnpj).execute()
+        if existing_org.data:
+            raise HTTPException(status_code=400, detail="CNPJ já cadastrado na plataforma")
+    except:
+        pass  # Tabela pode não existir ainda
+    
+    # 1. Criar Hotel
+    hotel_id = str(uuid.uuid4())
+    hotel_dict = {
+        'id': hotel_id,
+        'name': data.hotel_name,
+        'address': data.hotel_address,
+        'city': data.hotel_city,
+        'country': data.hotel_country,
+        'phone': data.hotel_phone,
+        'email': data.hotel_email,
+        'stars': data.hotel_stars,
+        'description': data.hotel_description,
+        'is_active': True,
+        'amenities': [],
+        'payment_providers': ['stripe', 'mercado_pago']
+    }
+    supabase.table('hotels').insert(hotel_dict).execute()
+    
+    # 2. Criar Organização (PJ)
+    try:
+        org_id = str(uuid.uuid4())
+        org_dict = {
+            'id': org_id,
+            'hotel_id': hotel_id,
+            **data.organization.model_dump(),
+            'status_contrato': 'trial',
+            'data_inicio_contrato': datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        }
+        supabase.table('organizations').insert(org_dict).execute()
+    except Exception as e:
+        logger.warning(f"Could not create organization: {e}")
+    
+    # 3. Criar Admin do Hotel
+    user_id = str(uuid.uuid4())
+    user_dict = {
+        'id': user_id,
+        'email': data.admin_email,
+        'name': data.admin_name,
+        'role': 'admin',
+        'hotel_id': hotel_id,
+        'password_hash': hash_password(data.admin_password),
+        'is_active': True,
+        'is_platform_admin': False
+    }
+    supabase.table('users').insert(user_dict).execute()
+    
+    # Gerar token
+    token = create_access_token(user_id, data.admin_email, 'admin')
+    
+    return {
+        "message": "Hotel registrado com sucesso!",
+        "hotel_id": hotel_id,
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_id,
+            "email": data.admin_email,
+            "name": data.admin_name,
+            "role": "admin",
+            "hotel_id": hotel_id
+        }
+    }
+
+# ================== GESTÃO DE ORGANIZAÇÃO DO HOTEL ==================
+
+@api_router.get("/organization/{hotel_id}")
+async def get_organization(hotel_id: str, current_user: dict = Depends(get_current_user)):
+    """Obter dados da organização do hotel"""
+    if not can_access_hotel(current_user, hotel_id):
+        raise HTTPException(status_code=403, detail="Sem acesso a este hotel")
+    
+    try:
+        result = supabase.table('organizations').select('*').eq('hotel_id', hotel_id).single().execute()
+        if not result.data:
+            return {"message": "Organização não cadastrada para este hotel"}
+        return result.data
+    except Exception as e:
+        return {"message": "Dados da organização não disponíveis"}
+
+@api_router.put("/organization/{hotel_id}")
+async def update_organization(hotel_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Atualizar dados da organização do hotel"""
+    if not can_access_hotel(current_user, hotel_id):
+        raise HTTPException(status_code=403, detail="Sem acesso a este hotel")
+    
+    if current_user.get('role') not in ['admin']:
+        raise HTTPException(status_code=403, detail="Apenas admins podem editar dados da organização")
+    
+    data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        result = supabase.table('organizations').update(data).eq('hotel_id', hotel_id).execute()
+        return {"message": "Organização atualizada", "data": result.data[0] if result.data else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
+# ================== MANUTENÇÃO ==================
+
+@api_router.post("/maintenance")
+async def create_maintenance_request(data: MaintenanceRequestCreate, current_user: dict = Depends(get_current_user)):
+    """Criar solicitação de manutenção"""
+    if not can_access_hotel(current_user, data.hotel_id):
+        raise HTTPException(status_code=403, detail="Sem acesso a este hotel")
+    
+    req_id = str(uuid.uuid4())
+    req_dict = {
+        'id': req_id,
+        'hotel_id': data.hotel_id,
+        'room_id': data.room_id,
+        'titulo': data.titulo,
+        'descricao': data.descricao,
+        'categoria': data.categoria,
+        'prioridade': data.prioridade,
+        'requested_by': current_user['id'],
+        'requested_by_type': 'staff',
+        'status': 'pending'
+    }
+    
+    try:
+        supabase.table('maintenance_requests').insert(req_dict).execute()
+        return {**req_dict}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao criar solicitação: {str(e)}")
+
+@api_router.get("/maintenance/{hotel_id}")
+async def get_maintenance_requests(hotel_id: str, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Listar solicitações de manutenção do hotel"""
+    if not can_access_hotel(current_user, hotel_id):
+        raise HTTPException(status_code=403, detail="Sem acesso a este hotel")
+    
+    try:
+        query = supabase.table('maintenance_requests').select('*').eq('hotel_id', hotel_id)
+        if status:
+            query = query.eq('status', status)
+        result = query.order('created_at', desc=True).execute()
+        return result.data or []
+    except Exception as e:
+        return []
+
+@api_router.patch("/maintenance/{request_id}")
+async def update_maintenance_request(request_id: str, data: MaintenanceRequestUpdate, current_user: dict = Depends(get_current_user)):
+    """Atualizar solicitação de manutenção"""
+    update_dict = {k: v for k, v in data.model_dump().items() if v is not None}
+    
+    if data.status == 'in_progress' and 'started_at' not in update_dict:
+        update_dict['started_at'] = datetime.now(timezone.utc).isoformat()
+    if data.status == 'completed' and 'completed_at' not in update_dict:
+        update_dict['completed_at'] = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        result = supabase.table('maintenance_requests').update(update_dict).eq('id', request_id).execute()
+        return result.data[0] if result.data else {"message": "Atualizado"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
+# ================== MARKETPLACE PARCEIROS (Central) ==================
+
+@api_router.get("/marketplace/partners")
+async def get_marketplace_partners(tipo: Optional[str] = None, cidade: Optional[str] = None):
+    """Lista parceiros do marketplace (restaurantes, lojas, etc) - público"""
+    try:
+        query = supabase.table('marketplace_partners').select('*').eq('is_active', True)
+        if tipo:
+            query = query.eq('tipo', tipo)
+        if cidade:
+            query = query.ilike('cidade', f'%{cidade}%')
+        result = query.order('is_featured', desc=True).execute()
+        return result.data or []
+    except Exception as e:
+        # Retornar dados mock se tabela não existir
+        return [
+            {
+                "id": "rest-001",
+                "nome": "Restaurante Sabor & Arte",
+                "tipo": "restaurant",
+                "descricao": "Culinária contemporânea com ingredientes locais",
+                "cidade": "São Paulo",
+                "rating": 4.8,
+                "is_featured": True,
+                "categorias": ["brasileira", "contemporânea"],
+                "horario_funcionamento": {"seg-sex": "11:00-23:00", "sab-dom": "12:00-00:00"}
+            },
+            {
+                "id": "rest-002",
+                "nome": "Pizzaria Bella Napoli",
+                "tipo": "restaurant",
+                "descricao": "Pizzas artesanais no forno a lenha",
+                "cidade": "São Paulo",
+                "rating": 4.6,
+                "is_featured": False,
+                "categorias": ["italiana", "pizzaria"]
+            },
+            {
+                "id": "spa-001",
+                "nome": "Zen Spa & Wellness",
+                "tipo": "spa",
+                "descricao": "Tratamentos de bem-estar e relaxamento",
+                "cidade": "São Paulo",
+                "rating": 4.9,
+                "is_featured": True,
+                "categorias": ["spa", "massagem", "estética"]
+            }
+        ]
+
+@api_router.get("/marketplace/partners/{partner_id}/products")
+async def get_partner_products(partner_id: str):
+    """Lista produtos/serviços de um parceiro"""
+    try:
+        result = supabase.table('partner_products').select('*').eq('partner_id', partner_id).eq('disponivel', True).execute()
+        return result.data or []
+    except Exception as e:
+        # Mock data
+        return [
+            {"id": "prod-001", "partner_id": partner_id, "nome": "Filé Mignon ao Molho Madeira", "preco": 89.90, "categoria": "pratos principais"},
+            {"id": "prod-002", "partner_id": partner_id, "nome": "Risoto de Camarão", "preco": 79.90, "categoria": "pratos principais"},
+            {"id": "prod-003", "partner_id": partner_id, "nome": "Tiramisu", "preco": 32.00, "categoria": "sobremesas"}
+        ]
+
+@api_router.post("/marketplace/orders")
+async def create_partner_order(data: dict, current_user: dict = Depends(get_current_user)):
+    """Criar pedido para parceiro do marketplace"""
+    order_id = str(uuid.uuid4())
+    order_number = f"MKT{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:4].upper()}"
+    
+    order_dict = {
+        'id': order_id,
+        'order_number': order_number,
+        'hotel_id': data.get('hotel_id'),
+        'guest_id': data.get('guest_id'),
+        'reservation_id': data.get('reservation_id'),
+        'partner_id': data.get('partner_id'),
+        'items': data.get('items', []),
+        'subtotal': data.get('subtotal', 0),
+        'taxa_entrega': data.get('taxa_entrega', 0),
+        'comissao_hestia': float(data.get('subtotal', 0)) * 0.10,  # 10% comissão
+        'total': data.get('total', 0),
+        'status': 'pending',
+        'tipo_entrega': data.get('tipo_entrega', 'room_delivery'),
+        'quarto_entrega': data.get('quarto_entrega'),
+        'instrucoes': data.get('instrucoes')
+    }
+    
+    try:
+        supabase.table('partner_orders').insert(order_dict).execute()
+        return {**order_dict, "message": "Pedido criado com sucesso"}
+    except Exception as e:
+        return {**order_dict, "message": "Pedido criado (simulado)"}
+
 # ================== ROOT ==================
 
 @api_router.get("/")
 async def root():
-    return {"message": "Hestia Hotel Management Platform API", "version": "2.0.0", "database": "Supabase"}
+    return {"message": "Hestia Hotel Management Platform API", "version": "3.0.0-b2b", "database": "Supabase", "multi_tenant": True}
 
 # Include the router
 app.include_router(api_router)
